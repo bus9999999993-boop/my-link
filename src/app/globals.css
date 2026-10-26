@@ -1,27 +1,69 @@
 @import "tailwindcss";
 
 :root {
-  --background: #fbf8ef;
-  --foreground: #121212;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --canvas: #7a8aba;
+  --periwinkle: #8ba1d4;
+  --sky: #9fbee7;
+  --lavender: #acace7;
+  --chrome-indigo: #3d4f97;
+  --muted-indigo: #60619c;
+  --platinum: #dedede;
+  --carbon: #21242e;
+  --signal: #f68d1f;
+  --amber: #ecab37;
+  --nav-gold: #e48600;
+  --primary: #e60012;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", sans-serif;
-  letter-spacing: -0.02em;
+  background-color: #536085;
+  background-image: radial-gradient(circle at 50% 0%, #6877a3 0%, #445070 100%);
+  color: #21242e;
+  font-family: Arial, Helvetica, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Custom Selection */
-::selection {
-  background-color: #ffe600;
-  color: #000000;
+/* Halftone dot-matrix texture for carbon command slabs (speaker grille effect) */
+.carbon-halftone {
+  background-color: #21242e;
+  background-image: radial-gradient(#343a4a 1.2px, transparent 1.2px);
+  background-size: 5px 5px;
+}
+
+/* Bevel plate styles */
+.bevel-plate {
+  border-top: 1.5px solid #ffffff;
+  border-left: 1.5px solid #b3c4e8;
+  border-right: 2px solid #3d4f97;
+  border-bottom: 2px solid #3d4f97;
+}
+
+.bevel-chip {
+  border-top: 1.5px solid #fff5cc;
+  border-left: 1.5px solid #f9d873;
+  border-right: 1.5px solid #946500;
+  border-bottom: 2px solid #6b4900;
+}
+
+.bevel-signal {
+  border-top: 1.5px solid #ffd4a3;
+  border-left: 1.5px solid #ffa954;
+  border-right: 1.5px solid #8e4500;
+  border-bottom: 2px solid #663100;
+}
+
+.bevel-inset {
+  border-top: 1.5px solid #3d4f97;
+  border-left: 1.5px solid #3d4f97;
+  border-right: 1.5px solid #ffffff;
+  border-bottom: 1.5px solid #ffffff;
+}
+
+/* Outlined Box-art display typography */
+.box-art-title {
+  color: #ffffff;
+  font-weight: 900;
+  text-transform: uppercase;
+  -webkit-text-stroke: 1.5px #21242e;
+  text-shadow: 2px 2px 0px #21242e;
 }
