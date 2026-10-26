@@ -14,12 +14,12 @@ export default function Home() {
 
         {/* 뱃지 */}
         <span className="inline-block px-3 py-1 text-xs font-medium rounded-full bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 mb-4">
-          대학생 &bull; 바이브 코딩
+          Software Developer &bull; Problem Solver
         </span>
 
         {/* 소개글 */}
         <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300 break-keep">
-          안녕하세요! 바이브 코딩을 배우고 있는 대학생입니다.
+          더 나은 사용자 경험을 고민하고 지속적으로 성장하는 개발자입니다. 코드로 일상의 문제를 해결하고 가치 있는 서비스를 만드는 일에 몰입합니다.
         </p>
       </div>
     </main>
