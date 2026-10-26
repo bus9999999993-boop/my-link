@@ -127,10 +127,17 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Box-Art Display Wordmark */}
-            <h1 className="box-art-title text-3xl sm:text-4xl leading-none tracking-tight mb-1.5 z-10">
-              정희원
-            </h1>
+            {/* 깔끔하고 정돈된 이름 타이포그래피 */}
+            <div className="flex flex-col items-center mb-2 z-10">
+              <div className="flex items-baseline gap-2">
+                <h1 className="text-2xl sm:text-3xl font-black text-[#21242e] tracking-tight">
+                  정희원
+                </h1>
+                <span className="text-xs sm:text-sm font-black text-[#3d4f97] tracking-wider uppercase">
+                  Jeong Huiwon
+                </span>
+              </div>
+            </div>
 
             {/* Role Badge */}
             <div className="inline-block bg-[#21242e] text-[#ecab37] font-black text-[10px] tracking-wider uppercase px-2 py-0.5 mb-2.5 z-10">
