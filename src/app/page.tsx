@@ -1,23 +1,70 @@
 "use client";
 
-import { useState } from "react";
-import { techSpecs } from "@/data/links";
+import { useState, useEffect } from "react";
+import { linkCartridges as defaultLinks, contactEmail, techSpecs, type LinkCartridge } from "@/data/links";
 import { LinkList } from "@/components/link-list";
+import { AddLinkDialog } from "@/components/add-link-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
+const STORAGE_KEY = "mylink_cartridges_list";
+
 export default function Home() {
+  const [links, setLinks] = useState<LinkCartridge[]>(defaultLinks);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  // 로컬 스토리지에서 저장된 링크 불러오기
+  useEffect(() => {
+    setIsMounted(true);
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setLinks(parsed);
+        }
+      }
+    } catch {
+      // 로컬 스토리지 파싱 실패 시 기본값 유지
+    }
+  }, []);
 
   const showToast = (message: string) => {
     setToastMessage(message);
     setTimeout(() => {
       setToastMessage(null);
-    }, 2200);
+    }, 2400);
+  };
+
+  const handleAddLink = (newLink: LinkCartridge) => {
+    setLinks((prev) => {
+      const updated = [newLink, ...prev];
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      } catch {
+        // storage save error fallback
+      }
+      return updated;
+    });
+    showToast(`카트리지 [${newLink.label}] 장착 완료! 💾`);
+  };
+
+  const handleResetLinks = () => {
+    if (confirm("링크 목록을 기본 상태로 초기화할까요?")) {
+      setLinks(defaultLinks);
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch {
+        // fallback
+      }
+      showToast("기본 카트리지 목록으로 복원되었습니다. 🔄");
+    }
   };
 
   const handleCopyEmail = () => {
+    navigator.clipboard.writeText(contactEmail);
     showToast("E-mail address copied to clipboard! ✉");
   };
 
@@ -65,7 +112,7 @@ export default function Home() {
             aria-label="공유하기"
             variant="amber"
             size="badge"
-            className="flex items-center gap-1"
+            className="flex items-center gap-1 cursor-pointer"
           >
             <span>SHARE</span>
             <span>➔</span>
@@ -134,12 +181,44 @@ export default function Home() {
           </Card>
         </div>
 
-        {/* 4. ESSENTIAL ACTION CARTRIDGES (Link List Component) */}
-        <div className="px-3.5 pb-3.5">
-          <LinkList onCopyEmail={handleCopyEmail} />
+        {/* 4. CARTRIDGE LIST HEADER (Action Toolbar) */}
+        <div className="px-3.5 pb-2 flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 bg-[#21242e] inline-block" />
+            <span className="text-[10px] font-black uppercase text-[#21242e] tracking-wider">
+              CARTRIDGE SLOTS ({isMounted ? links.length : defaultLinks.length})
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            {isMounted && links.length !== defaultLinks.length && (
+              <Button
+                variant="subtle"
+                size="xs"
+                onClick={handleResetLinks}
+                className="text-[9px] px-1.5 py-0.5 cursor-pointer"
+                title="기본값 복원"
+              >
+                RESET ↺
+              </Button>
+            )}
+            <AddLinkDialog
+              onAddLink={handleAddLink}
+              currentCount={links.length}
+            />
+          </div>
         </div>
 
-        {/* 5. HARDWARE TECH SPEC CHIPS */}
+        {/* 5. ESSENTIAL ACTION CARTRIDGES (Link List Component) */}
+        <div className="px-3.5 pb-3.5">
+          <LinkList
+            links={links}
+            email={contactEmail}
+            onCopyEmail={handleCopyEmail}
+          />
+        </div>
+
+        {/* 6. HARDWARE TECH SPEC CHIPS */}
         <div className="mx-3.5 mb-3.5 bg-[#8ba1d4] bevel-plate p-2 text-center">
           <div className="text-[9px] font-black text-[#21242e] uppercase tracking-wider mb-1.5 flex items-center justify-center gap-1">
             <span className="text-[#3d4f97]">≡</span>
@@ -160,7 +239,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* 6. COMPACT CARBON FOOTER BAR */}
+        {/* 7. COMPACT CARBON FOOTER BAR */}
         <footer className="carbon-halftone px-3.5 py-2.5 flex items-center justify-between gap-2 border-t-2 border-[#3d4f97] text-[9px] text-[#9fbee7]">
           <div className="font-bold text-white">
             © 1997–2001 Nintendo / Jeong Huiwon

@@ -1,7 +1,6 @@
 import * as React from "react"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { type LinkCartridge } from "@/data/links"
 import { cn } from "@/lib/utils"
 
@@ -38,14 +37,9 @@ export function LinkItemCard({ item, className, ...props }: LinkItemCardProps) {
           </div>
         </div>
 
-        <Button
-          asChild
-          variant="signal"
-          size="icon"
-          className="shrink-0 pointer-events-none"
-        >
-          <span>➔</span>
-        </Button>
+        <span className="w-5 h-5 rounded-full bg-[#f68d1f] group-hover:bg-[#ff9e3b] text-white flex items-center justify-center font-black text-[10px] bevel-signal shrink-0 shadow-xs pointer-events-none">
+          ➔
+        </span>
       </Card>
     </a>
   )

@@ -1,5 +1,7 @@
+"use client"
+
 import * as React from "react"
-import { linkCartridges, contactEmail, type LinkCartridge } from "@/data/links"
+import { type LinkCartridge } from "@/data/links"
 import { LinkItemCard } from "@/components/link-item-card"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -7,22 +9,22 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 export interface LinkListProps {
-  links?: LinkCartridge[]
+  links: LinkCartridge[]
   email?: string
   onCopyEmail?: () => void
   className?: string
 }
 
 export function LinkList({
-  links = linkCartridges,
-  email = contactEmail,
+  links,
+  email,
   onCopyEmail,
   className,
 }: LinkListProps) {
   return (
     <div className={cn("flex flex-col gap-2", className)}>
       {links.map((link, idx) => (
-        <LinkItemCard key={link.code || idx} item={link} />
+        <LinkItemCard key={link.code ? `${link.code}-${idx}` : idx} item={link} />
       ))}
 
       {email && (
