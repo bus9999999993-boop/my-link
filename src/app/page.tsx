@@ -1,10 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { techSpecs } from "@/data/links";
+import { LinkList } from "@/components/link-list";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
 export default function Home() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const email = "heewon.jung.dev@gmail.com";
 
   const showToast = (message: string) => {
     setToastMessage(message);
@@ -14,7 +18,6 @@ export default function Home() {
   };
 
   const handleCopyEmail = () => {
-    navigator.clipboard.writeText(email);
     showToast("E-mail address copied to clipboard! ✉");
   };
 
@@ -37,40 +40,10 @@ export default function Home() {
     }
   };
 
-  const linkCartridges = [
-    {
-      label: "GitHub",
-      code: "REPO-01",
-      desc: "오픈소스 프로젝트 & 소스코드 저장소",
-      url: "https://github.com",
-      tag: "CODE",
-      tagColor: "bg-[#21242e] text-[#ecab37]",
-    },
-    {
-      label: "Tech Blog",
-      code: "POST-02",
-      desc: "개발 트러블슈팅 & 기술 회고 아카이브",
-      url: "https://velog.io",
-      tag: "BLOG",
-      tagColor: "bg-[#206479] text-white",
-    },
-    {
-      label: "LinkedIn",
-      code: "PROF-03",
-      desc: "경력 소개 및 프로페셔널 네트워크",
-      url: "https://linkedin.com",
-      tag: "CAREER",
-      tagColor: "bg-[#3d4f97] text-white",
-    },
-  ];
-
-  const specs = ["Next.js", "TypeScript", "React 19", "Tailwind CSS", "Figma"];
-
   return (
     <main className="min-h-screen w-full flex items-center justify-center p-3 sm:p-6 text-[#21242e]">
       {/* 2001 Console Hardware Main Body (Compact Faceplate) */}
-      <div className="w-full max-w-[480px] bg-[#7a8aba] bevel-plate shadow-[0_16px_36px_rgba(20,25,45,0.4)] relative flex flex-col">
-        
+      <Card className="w-full max-w-[480px] bg-[#7a8aba] shadow-[0_16px_36px_rgba(20,25,45,0.4)] relative flex flex-col rounded-none">
         {/* 1. TOP COMMAND BAR: Carbon Navy with Halftone Dot Matrix */}
         <div className="carbon-halftone px-3.5 py-2 flex items-center justify-between border-b-2 border-[#3d4f97]">
           {/* Nintendo Oval Racetrack Pill */}
@@ -87,14 +60,16 @@ export default function Home() {
           </div>
 
           {/* Quick Share Action Button */}
-          <button
+          <Button
             onClick={handleShare}
             aria-label="공유하기"
-            className="bg-[#ecab37] hover:bg-[#e48600] active:bg-[#e48600] text-[#21242e] font-black text-[10px] uppercase px-2 py-0.5 bevel-chip cursor-pointer tracking-[0.5px] flex items-center gap-1"
+            variant="amber"
+            size="badge"
+            className="flex items-center gap-1"
           >
             <span>SHARE</span>
             <span>➔</span>
-          </button>
+          </Button>
         </div>
 
         {/* 2. SUB-NAV STRIP: Pale Sky */}
@@ -105,7 +80,7 @@ export default function Home() {
 
         {/* 3. HERO / PROFILE MODULE: Lavender Brushed Metallic Plate */}
         <div className="p-3.5 bg-[#7a8aba]">
-          <div className="bg-gradient-to-r from-[#acace7] via-[#9bb0db] to-[#8ba1d4] bevel-plate p-4 text-center flex flex-col items-center relative overflow-hidden">
+          <Card className="bg-gradient-to-r from-[#acace7] via-[#9bb0db] to-[#8ba1d4] p-4 text-center flex flex-col items-center relative overflow-hidden rounded-none">
             {/* Subtle Circuit Overlay */}
             <div
               className="absolute inset-0 opacity-10 pointer-events-none"
@@ -122,9 +97,13 @@ export default function Home() {
                   정
                 </span>
               </div>
-              <div className="absolute -bottom-1 -right-2 bg-[#f68d1f] text-white font-black text-[9px] px-1.5 py-0.2 bevel-signal uppercase">
+              <Badge
+                variant="signal"
+                size="micro"
+                className="absolute -bottom-1 -right-2 text-white"
+              >
                 32-BIT
-              </div>
+              </Badge>
             </div>
 
             {/* 깔끔하고 정돈된 이름 타이포그래피 */}
@@ -140,73 +119,24 @@ export default function Home() {
             </div>
 
             {/* Role Badge */}
-            <div className="inline-block bg-[#21242e] text-[#ecab37] font-black text-[10px] tracking-wider uppercase px-2 py-0.5 mb-2.5 z-10">
+            <Badge
+              variant="default"
+              size="default"
+              className="bg-[#21242e] text-[#ecab37] tracking-wider mb-2.5 z-10 rounded-none"
+            >
               FRONTEND DEVELOPER & PROBLEM SOLVER
-            </div>
+            </Badge>
 
             {/* 1-Sentence Concise Bio */}
             <p className="text-[12px] font-bold text-[#21242e] leading-relaxed max-w-sm break-keep z-10">
               문제를 집요하게 파고들어 직관적이고 견고한 웹 경험을 설계합니다. 사용자 가치를 만드는 지속 가능한 코드에 몰입합니다.
             </p>
-          </div>
+          </Card>
         </div>
 
-        {/* 4. ESSENTIAL ACTION CARTRIDGES (Link List) */}
-        <div className="px-3.5 pb-3.5 flex flex-col gap-2">
-          {linkCartridges.map((cart, idx) => (
-            <a
-              key={idx}
-              href={cart.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group bg-[#dedede] hover:bg-white bevel-plate p-2.5 flex items-center justify-between gap-2.5 cursor-pointer transition-colors"
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                {/* Cartridge Tag */}
-                <span className={`text-[9px] font-black px-1.5 py-0.5 shrink-0 ${cart.tagColor}`}>
-                  {cart.tag}
-                </span>
-
-                {/* Title & Description */}
-                <div className="text-left min-w-0">
-                  <div className="text-[12px] font-black text-[#21242e] group-hover:text-[#3d4f97] truncate">
-                    {cart.label}
-                  </div>
-                  <div className="text-[10px] font-bold text-[#555e75] truncate">
-                    {cart.desc}
-                  </div>
-                </div>
-              </div>
-
-              {/* Signal Orange Forward Chevron Disc */}
-              <span className="w-5 h-5 rounded-full bg-[#f68d1f] group-hover:bg-[#ff9e3b] text-white flex items-center justify-center font-black text-[10px] bevel-signal shrink-0 shadow-xs">
-                ➔
-              </span>
-            </a>
-          ))}
-
-          {/* Quick Email Contact Chip (Interactive) */}
-          <button
-            onClick={handleCopyEmail}
-            className="group bg-[#dedede] hover:bg-white bevel-plate p-2.5 flex items-center justify-between gap-2.5 cursor-pointer transition-colors text-left"
-          >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <span className="text-[9px] font-black px-1.5 py-0.5 shrink-0 bg-[#e60012] text-white">
-                MAIL
-              </span>
-              <div className="min-w-0">
-                <div className="text-[12px] font-black text-[#21242e] group-hover:text-[#3d4f97]">
-                  Contact / E-mail
-                </div>
-                <div className="text-[10px] font-bold text-[#555e75] truncate">
-                  {email}
-                </div>
-              </div>
-            </div>
-            <span className="bg-[#ecab37] hover:bg-[#e48600] text-[#21242e] font-black text-[10px] uppercase px-2 py-0.5 bevel-chip shrink-0">
-              COPY ✉
-            </span>
-          </button>
+        {/* 4. ESSENTIAL ACTION CARTRIDGES (Link List Component) */}
+        <div className="px-3.5 pb-3.5">
+          <LinkList onCopyEmail={handleCopyEmail} />
         </div>
 
         {/* 5. HARDWARE TECH SPEC CHIPS */}
@@ -217,13 +147,15 @@ export default function Home() {
             <span className="text-[#3d4f97]">≡</span>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-1">
-            {specs.map((item, idx) => (
-              <span
+            {techSpecs.map((item, idx) => (
+              <Badge
                 key={idx}
-                className="bg-white border border-[#3d4f97] text-[#21242e] font-black text-[10px] px-2 py-0.5 shadow-2xs"
+                variant="spec"
+                size="default"
+                className="rounded-none font-black text-[10px] px-2 py-0.5"
               >
                 #{item}
-              </span>
+              </Badge>
             ))}
           </div>
         </div>
@@ -235,12 +167,15 @@ export default function Home() {
           </div>
 
           {/* ESRB Privacy-Certified Mark */}
-          <div className="bg-[#ecab37] border border-[#21242e] px-1.5 py-0.2 text-[#21242e] font-black text-[9px] uppercase bevel-chip shrink-0">
+          <Badge
+            variant="amber"
+            size="micro"
+            className="border border-[#21242e] text-[#21242e] font-black text-[9px] uppercase shrink-0"
+          >
             ESRB — PRIVACY CERTIFIED
-          </div>
+          </Badge>
         </footer>
-
-      </div>
+      </Card>
 
       {/* Signal Orange Toast Notification */}
       {toastMessage && (

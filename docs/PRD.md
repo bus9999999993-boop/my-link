@@ -122,6 +122,7 @@ graph TD
 | :--- | :--- | :--- |
 | **DATA-01** | 자동 저장 & 동기화 | • Zustand `persist` 미들웨어로 브라우저 `localStorage`(`mylink_nintendo_portfolio`)에 즉시 저장 |
 | **DATA-02** | 개발자 포트폴리오 기본 샘플 | • 최초 접속 시 기본으로 멋진 닌텐도 감성 개발자 포트폴리오(대표 프로젝트 3개, GitHub/LinkedIn/블로그 링크 포함) 자동 주입 |
+| **DATA-04** | 링크 카트리지 더미 데이터 파일 | • 링크 목록(Link Cartridge)에 사용할 더미 데이터를 별도 TypeScript 데이터 파일(`src/data/links.ts`)로 분리하여 관리<br>• `LinkCartridge` 인터페이스 타입 정의: `label`, `code`, `desc`, `url`, `tag`, `tagColor` 필드<br>• 기본 제공 더미 링크 8건: GitHub(CODE), Tech Blog(BLOG), LinkedIn(CAREER), Portfolio(WORK), Instagram(SNS), YouTube(VIDEO), Notion Wiki(DOCS), Discord Server(CHAT)<br>• 이메일 연락처(`contactEmail`) 및 기술 스택 칩 목록(`techSpecs`)도 동일 파일에서 export<br>• 페이지 컴포넌트(`page.tsx`)는 하드코딩 대신 해당 데이터 파일을 import하여 사용 |
 | **DATA-03** | JSON 백업 및 리셋 | • 포트폴리오 데이터 백업(JSON 다운로드) 및 초기화(기본값 복원) 지원 |
 
 ---
@@ -194,7 +195,7 @@ graph TD
 | :--- | :--- | :--- |
 | **프레임워크** | Next.js 16 (App Router, Turbopack) | React 19 기반 |
 | **UI 컴포넌트** | **shadcn/ui** (v4, base-nova 스타일) | 모든 UI 컴포넌트의 기반. 닌텐도 레트로 테마로 커스터마이징하여 사용 |
-| **스타일링** | Tailwind CSS v4 (CSS-first, `@theme` 기반) | `tailwind.config.js` 없이 CSS 변수로 관리 |
+| **스타일링** | Tailwind CSS v4 (CSS-first, `@theme` 기반) | `tailwind.config.js` 없이 CSS 변수로 관리. **모듈 CSS(`.module.css`) 사용 금지 — 모든 컴포넌트 스타일은 Tailwind CSS 유틸리티 클래스로 통일** |
 | **아이콘** | Lucide React | shadcn/ui 기본 아이콘 라이브러리 |
 | **상태 관리** | Zustand + `persist` 미들웨어 | LocalStorage 동기화 |
 | **유틸리티** | class-variance-authority (CVA), cn() | 컴포넌트 Variant 관리 |
