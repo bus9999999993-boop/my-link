@@ -2,6 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { linkCartridges as defaultLinks, contactEmail, techSpecs, type LinkCartridge } from "@/data/links";
+import {
+  addLinkToFirestore,
+  subscribeToFirestoreLinks,
+  clearFirestoreLinks,
+} from "@/lib/links-service";
 import { LinkList } from "@/components/link-list";
 import { AddLinkDialog } from "@/components/add-link-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -15,20 +20,32 @@ export default function Home() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
 
-  // 로컬 스토리지에서 저장된 링크 불러오기
+  // Firestore (경로: users/anonymous/links) 실시간 구독 및 동기화
   useEffect(() => {
     setIsMounted(true);
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setLinks(parsed);
+
+    const unsubscribe = subscribeToFirestoreLinks(
+      (firestoreLinks) => {
+        setLinks([...firestoreLinks, ...defaultLinks]);
+      },
+      (error) => {
+        console.error("Firestore links fetch failed:", error);
+        // Firestore 연결 실패 시 로컬 스토리지 캐시 폴백
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setLinks(parsed);
+            }
+          }
+        } catch {
+          // fallback
         }
       }
-    } catch {
-      // 로컬 스토리지 파싱 실패 시 기본값 유지
-    }
+    );
+
+    return () => unsubscribe();
   }, []);
 
   const showToast = (message: string) => {
@@ -38,28 +55,33 @@ export default function Home() {
     }, 2400);
   };
 
-  const handleAddLink = (newLink: LinkCartridge) => {
-    setLinks((prev) => {
-      const updated = [newLink, ...prev];
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      } catch {
-        // storage save error fallback
-      }
-      return updated;
-    });
-    showToast(`카트리지 [${newLink.label}] 장착 완료! 💾`);
+  // Firestore (users/anonymous/links)에 링크 카트리지 저장
+  const handleAddLink = async (newLink: LinkCartridge) => {
+    try {
+      await addLinkToFirestore(newLink);
+      showToast(`카트리지 [${newLink.label}] Firestore 저장 완료! 💾`);
+    } catch (error) {
+      console.error("Firestore link save error:", error);
+      showToast("카트리지 저장에 실패했습니다. 다시 시도해주세요. ❌");
+      throw error;
+    }
   };
 
-  const handleResetLinks = () => {
-    if (confirm("링크 목록을 기본 상태로 초기화할까요?")) {
-      setLinks(defaultLinks);
+  const handleResetLinks = async () => {
+    if (confirm("링크 목록을 기본 상태로 초기화할까요? (Firestore의 사용자 링크도 삭제됩니다)")) {
       try {
-        localStorage.removeItem(STORAGE_KEY);
-      } catch {
-        // fallback
+        await clearFirestoreLinks();
+        setLinks(defaultLinks);
+        try {
+          localStorage.removeItem(STORAGE_KEY);
+        } catch {
+          // fallback
+        }
+        showToast("기본 카트리지 목록으로 복원되었습니다. 🔄");
+      } catch (error) {
+        console.error("Firestore links reset error:", error);
+        showToast("초기화 중 오류가 발생했습니다. ❌");
       }
-      showToast("기본 카트리지 목록으로 복원되었습니다. 🔄");
     }
   };
 

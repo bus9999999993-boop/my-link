@@ -123,7 +123,7 @@ export const addLinkSchema = z.object({
 export type AddLinkFormData = z.infer<typeof addLinkSchema>
 
 export interface AddLinkDialogProps {
-  onAddLink: (link: LinkCartridge) => void
+  onAddLink: (link: LinkCartridge) => Promise<void> | void
   currentCount?: number
 }
 
@@ -163,7 +163,7 @@ export function AddLinkDialog({ onAddLink, currentCount = 0 }: AddLinkDialogProp
     }
   }
 
-  const onSubmit = (data: AddLinkFormData) => {
+  const onSubmit = async (data: AddLinkFormData) => {
     let finalUrl = data.url.trim()
     if (!/^https?:\/\//i.test(finalUrl)) {
       finalUrl = `https://${finalUrl}`
@@ -179,9 +179,13 @@ export function AddLinkDialog({ onAddLink, currentCount = 0 }: AddLinkDialogProp
       code: `USER-${codeNum}`,
     }
 
-    onAddLink(newCartridge)
-    reset()
-    setOpen(false)
+    try {
+      await onAddLink(newCartridge)
+      reset()
+      setOpen(false)
+    } catch {
+      // 에러 발생 시 다이얼로그 폼 유지
+    }
   }
 
   return (
@@ -379,7 +383,7 @@ export function AddLinkDialog({ onAddLink, currentCount = 0 }: AddLinkDialogProp
               disabled={isSubmitting}
               className="cursor-pointer"
             >
-              INSERT 💾
+              {isSubmitting ? "SAVING... 💾" : "INSERT 💾"}
             </Button>
           </DialogFooter>
         </form>

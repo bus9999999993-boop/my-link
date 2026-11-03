@@ -1,5 +1,6 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
 import { getAnalytics, isSupported, Analytics } from "firebase/analytics";
+import { getFirestore, Firestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -14,6 +15,9 @@ const firebaseConfig = {
 // Initialize Firebase (prevent multiple initializations during Next.js HMR/SSR)
 const app: FirebaseApp = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
+// Initialize Firestore
+const db: Firestore = getFirestore(app);
+
 // Initialize Analytics (only in client/browser environment)
 let analytics: Analytics | null = null;
 if (typeof window !== "undefined") {
@@ -24,4 +28,4 @@ if (typeof window !== "undefined") {
   });
 }
 
-export { app, analytics, firebaseConfig };
+export { app, db, analytics, firebaseConfig };

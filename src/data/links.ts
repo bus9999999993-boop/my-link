@@ -1,4 +1,6 @@
 export interface LinkCartridge {
+  /** 문서 고유 ID (Firestore 문서 ID) */
+  id?: string;
   /** 링크 표시 이름 */
   label: string;
   /** 카트리지 코드 (장식용) */
@@ -11,6 +13,8 @@ export interface LinkCartridge {
   tag: string;
   /** 태그 색상 클래스 */
   tagColor: string;
+  /** 생성일시 */
+  createdAt?: any;
 }
 
 export const linkCartridges: LinkCartridge[] = [

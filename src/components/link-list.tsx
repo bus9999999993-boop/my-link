@@ -24,7 +24,10 @@ export function LinkList({
   return (
     <div className={cn("flex flex-col gap-2", className)}>
       {links.map((link, idx) => (
-        <LinkItemCard key={link.code ? `${link.code}-${idx}` : idx} item={link} />
+        <LinkItemCard
+          key={link.id || (link.code ? `${link.code}-${idx}` : idx)}
+          item={link}
+        />
       ))}
 
       {email && (
