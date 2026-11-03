@@ -12,6 +12,8 @@ export interface LinkListProps {
   links: LinkCartridge[]
   email?: string
   onCopyEmail?: () => void
+  onUpdateLink?: (id: string, updated: Partial<LinkCartridge>) => Promise<void>
+  onDeleteLink?: (item: LinkCartridge) => void
   className?: string
 }
 
@@ -19,6 +21,8 @@ export function LinkList({
   links,
   email,
   onCopyEmail,
+  onUpdateLink,
+  onDeleteLink,
   className,
 }: LinkListProps) {
   return (
@@ -38,6 +42,8 @@ export function LinkList({
           <LinkItemCard
             key={link.id || (link.code ? `${link.code}-${idx}` : idx)}
             item={link}
+            onUpdate={onUpdateLink}
+            onDelete={onDeleteLink}
           />
         ))
       )}

@@ -9,6 +9,7 @@ const buttonVariants = cva(
       variant: {
         default: "bg-[#21242e] text-white hover:bg-[#343a4a]",
         signal: "bg-[#f68d1f] hover:bg-[#ff9e3b] text-white bevel-signal shadow-xs",
+        danger: "bg-[#e60012] hover:bg-[#a7282b] text-white bevel-chip tracking-[0.5px] shadow-xs",
         amber: "bg-[#ecab37] hover:bg-[#e48600] active:bg-[#e48600] text-[#21242e] bevel-chip tracking-[0.5px]",
         subtle: "bg-[#dedede] hover:bg-white text-[#21242e] bevel-plate",
         ghost: "hover:bg-black/5 text-[#21242e]",

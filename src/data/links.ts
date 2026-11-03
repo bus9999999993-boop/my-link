@@ -15,6 +15,8 @@ export interface LinkCartridge {
   tagColor: string;
   /** 생성일시 */
   createdAt?: any;
+  /** 수정일시 */
+  updatedAt?: any;
 }
 
 export const linkCartridges: LinkCartridge[] = [

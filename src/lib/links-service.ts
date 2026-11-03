@@ -1,12 +1,14 @@
 import {
   collection,
+  doc,
   addDoc,
+  updateDoc,
+  deleteDoc,
   serverTimestamp,
   query,
   orderBy,
   onSnapshot,
   getDocs,
-  deleteDoc,
   type Unsubscribe,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -27,7 +29,7 @@ export function getLinksCollectionRef() {
  * 경로: users/anonymous/links
  */
 export async function addLinkToFirestore(
-  link: Omit<LinkCartridge, "id" | "createdAt">
+  link: Omit<LinkCartridge, "id" | "createdAt" | "updatedAt">
 ): Promise<string> {
   const colRef = getLinksCollectionRef();
   const docRef = await addDoc(colRef, {
@@ -38,6 +40,7 @@ export async function addLinkToFirestore(
     tag: link.tag,
     tagColor: link.tagColor,
     createdAt: serverTimestamp(),
+    updatedAt: null,
   });
   return docRef.id;
 }
@@ -66,6 +69,7 @@ export function subscribeToFirestoreLinks(
           tag: data.tag ?? "",
           tagColor: data.tagColor ?? "",
           createdAt: data.createdAt,
+          updatedAt: data.updatedAt ?? null,
         };
       });
       onSuccess(items);
@@ -95,8 +99,32 @@ export async function getFirestoreLinks(): Promise<LinkCartridge[]> {
       tag: data.tag ?? "",
       tagColor: data.tagColor ?? "",
       createdAt: data.createdAt,
+      updatedAt: data.updatedAt ?? null,
     };
   });
+}
+
+/**
+ * users/anonymous/links 컬렉션의 특정 링크를 수정합니다.
+ * updatedAt 을 serverTimestamp()로 자동 기록합니다.
+ */
+export async function updateLinkInFirestore(
+  id: string,
+  link: Partial<Omit<LinkCartridge, "id" | "createdAt" | "updatedAt">>
+): Promise<void> {
+  const docRef = doc(db, "users", "anonymous", "links", id);
+  await updateDoc(docRef, {
+    ...link,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/**
+ * users/anonymous/links 컬렉션의 특정 링크를 삭제합니다.
+ */
+export async function deleteLinkFromFirestore(id: string): Promise<void> {
+  const docRef = doc(db, "users", "anonymous", "links", id);
+  await deleteDoc(docRef);
 }
 
 /**

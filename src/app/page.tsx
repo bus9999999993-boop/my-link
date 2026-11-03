@@ -5,10 +5,13 @@ import { contactEmail, techSpecs, type LinkCartridge } from "@/data/links";
 import {
   addLinkToFirestore,
   getFirestoreLinks,
+  updateLinkInFirestore,
+  deleteLinkFromFirestore,
   clearFirestoreLinks,
 } from "@/lib/links-service";
 import { LinkList } from "@/components/link-list";
 import { AddLinkDialog } from "@/components/add-link-dialog";
+import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -20,6 +23,10 @@ export default function Home() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // 삭제 확인 모달 상태
+  const [deleteTarget, setDeleteTarget] = useState<LinkCartridge | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   // Firestore (경로: users/anonymous/links)에서 사용자가 등록한 최신순(createdAt desc) 링크 목록 1회 조회 (기존 기본 링크 배제)
   const fetchLinks = useCallback(async () => {
@@ -75,6 +82,44 @@ export default function Home() {
       console.error("Firestore link save error:", error);
       showToast("카트리지 저장에 실패했습니다. 다시 시도해주세요. ❌");
       throw error;
+    }
+  };
+
+  // 3. 링크 수정 후 목록 갱신 (비실시간: updateDoc 후 fetchLinks 호출)
+  const handleUpdateLink = async (
+    id: string,
+    updated: Partial<LinkCartridge>
+  ) => {
+    try {
+      await updateLinkInFirestore(id, updated);
+      showToast(`카트리지 수정 완료! ✏️`);
+      await fetchLinks();
+    } catch (error) {
+      console.error("Firestore link update error:", error);
+      showToast("카트리지 수정에 실패했습니다. 다시 시도해주세요. ❌");
+      throw error;
+    }
+  };
+
+  // 4. 삭제 버튼 클릭 → 삭제 확인 모달 오픈
+  const handleDeleteRequest = (item: LinkCartridge) => {
+    setDeleteTarget(item);
+    setIsDeleteModalOpen(true);
+  };
+
+  // 5. 삭제 확인 모달에서 [삭제하기] 누를 때
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget?.id) return;
+    try {
+      await deleteLinkFromFirestore(deleteTarget.id);
+      showToast(`카트리지 [${deleteTarget.label}] 삭제 완료! 🗑`);
+      await fetchLinks();
+    } catch (error) {
+      console.error("Firestore link delete error:", error);
+      showToast("삭제 중 오류가 발생했습니다. 다시 시도해주세요. ❌");
+      throw error;
+    } finally {
+      setDeleteTarget(null);
     }
   };
 
@@ -263,6 +308,8 @@ export default function Home() {
             links={links}
             email={contactEmail}
             onCopyEmail={handleCopyEmail}
+            onUpdateLink={handleUpdateLink}
+            onDeleteLink={handleDeleteRequest}
           />
         </div>
 
@@ -310,6 +357,17 @@ export default function Home() {
           {toastMessage}
         </div>
       )}
+
+      {/* 삭제 확인 모달 */}
+      <DeleteConfirmDialog
+        open={isDeleteModalOpen}
+        link={deleteTarget}
+        onOpenChange={(open) => {
+          setIsDeleteModalOpen(open);
+          if (!open) setDeleteTarget(null);
+        }}
+        onConfirm={handleDeleteConfirm}
+      />
     </main>
   );
 }
