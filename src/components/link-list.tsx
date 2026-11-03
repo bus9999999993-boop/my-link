@@ -23,12 +23,24 @@ export function LinkList({
 }: LinkListProps) {
   return (
     <div className={cn("flex flex-col gap-2", className)}>
-      {links.map((link, idx) => (
-        <LinkItemCard
-          key={link.id || (link.code ? `${link.code}-${idx}` : idx)}
-          item={link}
-        />
-      ))}
+      {links.length === 0 ? (
+        <div className="bg-[#8ba1d4] bevel-plate p-5 text-center flex flex-col items-center justify-center gap-1.5">
+          <div className="text-[11px] font-black text-[#21242e] uppercase tracking-wider">
+            [ NO CARTRIDGES INSERTED ]
+          </div>
+          <p className="text-[10px] font-bold text-[#3d4f97] leading-relaxed">
+            아직 추가된 링크 카트리지가 없습니다.<br />
+            우측 상단의 <span className="text-[#21242e] font-black">[+ INSERT CARTRIDGE]</span> 버튼을 눌러 링크를 등록해보세요!
+          </p>
+        </div>
+      ) : (
+        links.map((link, idx) => (
+          <LinkItemCard
+            key={link.id || (link.code ? `${link.code}-${idx}` : idx)}
+            item={link}
+          />
+        ))
+      )}
 
       {email && (
         <Card

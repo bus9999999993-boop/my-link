@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { linkCartridges as defaultLinks, contactEmail, techSpecs, type LinkCartridge } from "@/data/links";
+import { useState, useEffect, useCallback } from "react";
+import { contactEmail, techSpecs, type LinkCartridge } from "@/data/links";
 import {
   addLinkToFirestore,
-  subscribeToFirestoreLinks,
+  getFirestoreLinks,
   clearFirestoreLinks,
 } from "@/lib/links-service";
 import { LinkList } from "@/components/link-list";
@@ -16,37 +16,46 @@ import { Card } from "@/components/ui/card";
 const STORAGE_KEY = "mylink_cartridges_list";
 
 export default function Home() {
-  const [links, setLinks] = useState<LinkCartridge[]>(defaultLinks);
+  const [links, setLinks] = useState<LinkCartridge[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Firestore (경로: users/anonymous/links) 실시간 구독 및 동기화
+  // Firestore (경로: users/anonymous/links)에서 사용자가 등록한 최신순(createdAt desc) 링크 목록 1회 조회 (기존 기본 링크 배제)
+  const fetchLinks = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const firestoreLinks = await getFirestoreLinks();
+      setLinks(firestoreLinks);
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(firestoreLinks));
+      } catch {
+        // ignore
+      }
+    } catch (error) {
+      console.error("Firestore links fetch failed:", error);
+      // Firestore 연결 실패 시 로컬 스토리지 캐시 폴백
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            setLinks(parsed);
+          }
+        }
+      } catch {
+        // fallback
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // 1. 페이지 로드 시 Firebase에서 사용자가 추가한 링크 목록만 불러오기
   useEffect(() => {
     setIsMounted(true);
-
-    const unsubscribe = subscribeToFirestoreLinks(
-      (firestoreLinks) => {
-        setLinks([...firestoreLinks, ...defaultLinks]);
-      },
-      (error) => {
-        console.error("Firestore links fetch failed:", error);
-        // Firestore 연결 실패 시 로컬 스토리지 캐시 폴백
-        try {
-          const saved = localStorage.getItem(STORAGE_KEY);
-          if (saved) {
-            const parsed = JSON.parse(saved);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              setLinks(parsed);
-            }
-          }
-        } catch {
-          // fallback
-        }
-      }
-    );
-
-    return () => unsubscribe();
-  }, []);
+    fetchLinks();
+  }, [fetchLinks]);
 
   const showToast = (message: string) => {
     setToastMessage(message);
@@ -55,11 +64,13 @@ export default function Home() {
     }, 2400);
   };
 
-  // Firestore (users/anonymous/links)에 링크 카트리지 저장
+  // 2. 링크 추가 후 목록 갱신 (비실시간: addDoc 후 fetchLinks 호출)
   const handleAddLink = async (newLink: LinkCartridge) => {
     try {
       await addLinkToFirestore(newLink);
-      showToast(`카트리지 [${newLink.label}] Firestore 저장 완료! 💾`);
+      showToast(`카트리지 [${newLink.label}] 저장 완료! 💾`);
+      // 링크 추가 완료 후 최신순 목록 다시 불러와 갱신
+      await fetchLinks();
     } catch (error) {
       console.error("Firestore link save error:", error);
       showToast("카트리지 저장에 실패했습니다. 다시 시도해주세요. ❌");
@@ -67,20 +78,20 @@ export default function Home() {
     }
   };
 
-  const handleResetLinks = async () => {
-    if (confirm("링크 목록을 기본 상태로 초기화할까요? (Firestore의 사용자 링크도 삭제됩니다)")) {
+  const handleClearAllLinks = async () => {
+    if (confirm("등록된 모든 링크 카트리지를 삭제할까요? (Firestore에서 삭제됩니다)")) {
       try {
         await clearFirestoreLinks();
-        setLinks(defaultLinks);
+        await fetchLinks();
         try {
           localStorage.removeItem(STORAGE_KEY);
         } catch {
           // fallback
         }
-        showToast("기본 카트리지 목록으로 복원되었습니다. 🔄");
+        showToast("모든 카트리지가 삭제되었습니다. 🗑");
       } catch (error) {
-        console.error("Firestore links reset error:", error);
-        showToast("초기화 중 오류가 발생했습니다. ❌");
+        console.error("Firestore links clear error:", error);
+        showToast("삭제 중 오류가 발생했습니다. ❌");
       }
     }
   };
@@ -208,20 +219,35 @@ export default function Home() {
           <div className="flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 bg-[#21242e] inline-block" />
             <span className="text-[10px] font-black uppercase text-[#21242e] tracking-wider">
-              CARTRIDGE SLOTS ({isMounted ? links.length : defaultLinks.length})
+              CARTRIDGE SLOTS ({isMounted ? links.length : 0})
             </span>
+            {isLoading && (
+              <span className="text-[9px] font-bold text-[#e48600] animate-pulse">
+                SYNCING...
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-1.5">
-            {isMounted && links.length !== defaultLinks.length && (
+            <Button
+              variant="subtle"
+              size="xs"
+              onClick={() => fetchLinks()}
+              disabled={isLoading}
+              className="text-[9px] px-1.5 py-0.5 cursor-pointer"
+              title="Firebase 링크 새로고침"
+            >
+              REFRESH ↻
+            </Button>
+            {isMounted && links.length > 0 && (
               <Button
                 variant="subtle"
                 size="xs"
-                onClick={handleResetLinks}
-                className="text-[9px] px-1.5 py-0.5 cursor-pointer"
-                title="기본값 복원"
+                onClick={handleClearAllLinks}
+                className="text-[9px] px-1.5 py-0.5 cursor-pointer text-[#a7282b] hover:text-[#e60012]"
+                title="모든 링크 삭제"
               >
-                RESET ↺
+                CLEAR 🗑
               </Button>
             )}
             <AddLinkDialog
