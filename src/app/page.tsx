@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { LinkList } from "@/components/link-list";
 import { AddLinkDialog } from "@/components/add-link-dialog";
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog";
+import { EditProfileDialog } from "@/components/edit-profile-dialog";
 import { LoginScreen } from "@/components/login-screen";
 import { UserHeader } from "@/components/user-header";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +21,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
 export default function Home() {
-  const { user, profile, displayName, authLoading } = useAuth();
+  const { user, profile, displayName, bio, authLoading, updateProfileState } =
+    useAuth();
 
   const [links, setLinks] = useState<LinkCartridge[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -30,6 +32,12 @@ export default function Home() {
   // 삭제 확인 모달 상태
   const [deleteTarget, setDeleteTarget] = useState<LinkCartridge | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  // 프로필 수정 완료 핸들러
+  const handleProfileUpdateSuccess = (newDisplayName: string, newBio: string) => {
+    updateProfileState({ displayName: newDisplayName, bio: newBio });
+    showToast(`프로필 [${newDisplayName}] 수정 완료! ✏️`);
+  };
 
   // Firestore에서 사용자 링크 목록 조회 (users/{user.uid}/link, 최신순)
   const fetchLinks = useCallback(async () => {
@@ -220,6 +228,16 @@ export default function Home() {
                   }}
                 />
 
+                {/* 우측 상단 프로필 수정 버튼 */}
+                <div className="absolute top-2.5 right-2.5 z-20">
+                  <EditProfileDialog
+                    currentUid={user.uid}
+                    initialDisplayName={displayName}
+                    initialBio={bio}
+                    onUpdateSuccess={handleProfileUpdateSuccess}
+                  />
+                </div>
+
                 {/* Profile Avatar */}
                 <div className="relative mb-2.5 z-10">
                   {user.photoURL ? (
@@ -257,7 +275,7 @@ export default function Home() {
                   )}
                 </div>
 
-                {/* 이름 / 유저 정보 (Display Name: 로그인한 사람의 이메일 앞부분) */}
+                {/* 이름 / 유저 정보 (Display Name: 로그인한 사람의 이메일 앞부분 또는 커스텀 변경값) */}
                 <div className="flex flex-col items-center mb-1.5 z-10">
                   <div className="flex items-baseline gap-2">
                     <h1 className="text-2xl sm:text-3xl font-black text-[#21242e] tracking-tight">
@@ -283,9 +301,9 @@ export default function Home() {
                   MY LINK CONSOLE USER
                 </Badge>
 
-                {/* 안내 문구 */}
+                {/* 안내 문구 / 한 줄 소개 (Bio) */}
                 <p className="text-[11px] sm:text-[12px] font-bold text-[#21242e] leading-relaxed max-w-sm break-keep z-10">
-                  개인화된 Firestore 저장소에 링크 카트리지를 등록하고 실시간으로 관리합니다.
+                  {bio}
                 </p>
 
                 {/* Firestore 경로 및 유저 정보 박스 */}

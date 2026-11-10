@@ -7,14 +7,15 @@ import {
   serverTimestamp,
   query,
   orderBy,
+  where,
   onSnapshot,
   getDocs,
   getDoc,
   setDoc,
   type Unsubscribe,
 } from "firebase/firestore";
-import { type User } from "firebase/auth";
-import { db } from "@/lib/firebase";
+import { type User, updateProfile } from "firebase/auth";
+import { auth, db } from "@/lib/firebase";
 import { type LinkCartridge } from "@/data/links";
 
 /**
@@ -36,26 +37,52 @@ export function getEmailDisplayName(
 export interface UserProfileDoc {
   uid: string;
   email: string;
-  displayName: string; // 이메일 앞부분
+  displayName: string; // 기본값: 이메일 앞부분
+  bio?: string; // 한 줄 소개
   photoURL?: string | null;
   firestorePath: string; // "users/{uid}/link"
   lastLoginAt?: any;
+  updatedAt?: any;
 }
 
 /**
  * users/{uid} 경로에 유저 프로필 정보를 동기화(저장/업데이트)합니다.
- * display name은 이메일 앞부분을 기본값으로 사용합니다.
+ * 기존에 설정된 커스텀 displayName이나 bio가 있다면 보존합니다.
  */
 export async function syncUserProfile(user: User): Promise<UserProfileDoc> {
   const userDocRef = doc(db, "users", user.uid);
+  const snap = await getDoc(userDocRef);
+
   const email = user.email || "";
-  const displayName = getEmailDisplayName(email, user.displayName || "User");
   const firestorePath = `users/${user.uid}/link`;
 
+  if (snap.exists()) {
+    const existing = snap.data() as UserProfileDoc;
+    // 기존에 displayName이 설정되어 있으면 유지, 없으면 이메일 앞부분 사용
+    const finalDisplayName =
+      existing.displayName || getEmailDisplayName(email, user.displayName || "User");
+    const updatedData: Partial<UserProfileDoc> = {
+      uid: user.uid,
+      email,
+      displayName: finalDisplayName,
+      photoURL: user.photoURL || existing.photoURL || null,
+      firestorePath,
+      lastLoginAt: serverTimestamp(),
+    };
+    await setDoc(userDocRef, updatedData, { merge: true });
+    return {
+      ...existing,
+      ...updatedData,
+    };
+  }
+
+  // 신규 가입 시 기본 displayName = 이메일 앞부분
+  const initialDisplayName = getEmailDisplayName(email, user.displayName || "User");
   const profileData: UserProfileDoc = {
     uid: user.uid,
     email,
-    displayName,
+    displayName: initialDisplayName,
+    bio: "개인화된 Firestore 저장소에 링크 카트리지를 등록하고 실시간으로 관리합니다.",
     photoURL: user.photoURL || null,
     firestorePath,
     lastLoginAt: serverTimestamp(),
@@ -63,6 +90,52 @@ export async function syncUserProfile(user: User): Promise<UserProfileDoc> {
 
   await setDoc(userDocRef, profileData, { merge: true });
   return profileData;
+}
+
+/**
+ * Display Name 중복 확인 함수
+ * 자신(currentUid)을 제외한 다른 사용자가 이미 사용 중인지 확인합니다.
+ * @returns true: 이미 사용 중 (중복), false: 사용 가능
+ */
+export async function isDisplayNameTaken(
+  newDisplayName: string,
+  currentUid: string
+): Promise<boolean> {
+  const trimmed = newDisplayName.trim();
+  if (!trimmed) return false;
+
+  const usersRef = collection(db, "users");
+  const q = query(usersRef, where("displayName", "==", trimmed));
+  const snapshot = await getDocs(q);
+
+  // 검색 결과 중 본인(currentUid)의 문서가 아닌 다른 유저의 문서가 1개 이상이면 중복!
+  return snapshot.docs.some((docSnap) => docSnap.id !== currentUid);
+}
+
+/**
+ * users/{uid} 경로의 유저 프로필(Display Name, Bio 등)을 수정합니다.
+ */
+export async function updateUserProfile(
+  uid: string,
+  updates: { displayName: string; bio?: string }
+): Promise<void> {
+  const userDocRef = doc(db, "users", uid);
+  await updateDoc(userDocRef, {
+    displayName: updates.displayName.trim(),
+    bio: updates.bio?.trim() || "",
+    updatedAt: serverTimestamp(),
+  });
+
+  // Firebase Auth의 currentUser displayName도 함께 동기화
+  if (auth.currentUser && auth.currentUser.uid === uid) {
+    try {
+      await updateProfile(auth.currentUser, {
+        displayName: updates.displayName.trim(),
+      });
+    } catch (e) {
+      console.warn("Failed to update auth.currentUser profile:", e);
+    }
+  }
 }
 
 /**
