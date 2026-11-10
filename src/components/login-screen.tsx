@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { signInWithGoogle } from "@/lib/auth-service";
 
@@ -22,11 +21,25 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
       onLoginSuccess?.();
     } catch (err: unknown) {
       console.error("Google login error:", err);
-      // 팝업을 닫은 경우 등은 에러 표시 생략
       const code = (err as { code?: string })?.code;
-      if (code !== "auth/popup-closed-by-user" && code !== "auth/cancelled-popup-request") {
-        setError("로그인 중 오류가 발생했습니다. 다시 시도해주세요.");
+      if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+        setIsLoading(false);
+        return;
       }
+      const messages: Record<string, string> = {
+        "auth/operation-not-allowed":
+          "Google 로그인이 Firebase Console에서 활성화되지 않았습니다. Authentication > Sign-in method에서 Google을 활성화해주세요.",
+        "auth/unauthorized-domain":
+          "현재 도메인이 Firebase 인증 허용 도메인에 등록되어 있지 않습니다. (localhost 등록 필요)",
+        "auth/popup-blocked":
+          "브라우저 팝업이 차단되었습니다. 팝업 차단을 해제하고 다시 시도해주세요.",
+        "auth/network-request-failed":
+          "네트워크 통신 오류가 발생했습니다. 인터넷 연결 상태를 확인해주세요.",
+      };
+      setError(
+        messages[code ?? ""] ??
+          `로그인 실패 (${code || "알 수 없는 오류"}): 브라우저 콘솔을 확인해주세요.`
+      );
     } finally {
       setIsLoading(false);
     }
@@ -34,75 +47,83 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
   return (
     <div className="flex flex-col gap-0">
-      {/* 로그인 안내 패널 */}
+      {/* 1. 비로그인 접근 차단 및 로그인 유도 설명 패널 */}
       <div className="px-3.5 pb-3.5">
         <Card className="bg-[#8ba1d4] bevel-plate p-0 overflow-hidden">
-          {/* 상단 배너 */}
-          <div className="bg-[#21242e] px-4 py-2.5 flex items-center gap-2 border-b-2 border-[#ecab37]">
-            <span className="w-2 h-2 rounded-full bg-[#ecab37] animate-pulse shrink-0" />
-            <span className="text-[10px] font-black uppercase text-[#ecab37] tracking-wider">
-              AUTHENTICATION REQUIRED
+          {/* 상단 닌텐도 레트로 스타일 알림 배너 */}
+          <div className="bg-[#21242e] px-4 py-2.5 flex items-center justify-between border-b-2 border-[#ecab37]">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#e60012] animate-pulse shrink-0" />
+              <span className="text-[10px] font-black uppercase text-[#ecab37] tracking-wider">
+                [ ACCESS RESTRICTED : LOGIN REQUIRED ]
+              </span>
+            </div>
+            <span className="text-[9px] font-mono font-bold text-[#9fbee7]">
+              GUEST MODE
             </span>
           </div>
 
-          {/* 본문 */}
-          <div className="p-4 flex flex-col items-center gap-4 text-center">
-            {/* 아이콘 영역 */}
-            <div className="w-14 h-14 bg-[#dedede] bevel-plate flex items-center justify-center mt-1">
-              <span className="text-3xl select-none">🔐</span>
+          {/* 본문 설명 및 안내 문구 */}
+          <div className="p-4 sm:p-5 flex flex-col items-center gap-4 text-center">
+            {/* 자물쇠 / 카트리지 하드웨어 아이콘 */}
+            <div className="w-14 h-14 bg-[#dedede] bevel-plate flex items-center justify-center shadow-inner">
+              <span className="text-3xl select-none">🔒</span>
             </div>
 
-            {/* 설명 텍스트 */}
-            <div className="flex flex-col gap-1.5">
-              <p className="text-[13px] font-black text-[#21242e] tracking-tight">
-                개인 링크 카트리지를 관리하려면
+            {/* 메인 설명 문구 */}
+            <div className="flex flex-col gap-2">
+              <h2 className="text-base sm:text-lg font-black text-[#21242e] tracking-tight leading-tight">
+                로그인 이후에 마이 링크 서비스를
                 <br />
-                로그인이 필요합니다.
-              </p>
-              <p className="text-[11px] font-bold text-[#3d4f97] leading-relaxed">
-                Google 계정으로 로그인하면 나만의 링크를
+                이용하실 수 있습니다.
+              </h2>
+              <p className="text-[11px] sm:text-[12px] font-bold text-[#3d4f97] leading-relaxed max-w-sm">
+                현재 비로그인 상태이므로 카트리지 슬롯이 잠겨 있습니다.
                 <br />
-                저장하고 언제 어디서나 관리할 수 있습니다.
+                Google 계정으로 로그인하면 개인화된 저장소
+                <span className="text-[#21242e] font-black"> (users/&#123;uid&#125;/link)</span>에
+                나만의 링크 카트리지를 안전하게 보관하고 관리할 수 있습니다.
               </p>
             </div>
 
-            {/* 기능 소개 칩 */}
-            <div className="flex flex-wrap justify-center gap-1.5 w-full">
-              {[
-                { icon: "💾", label: "링크 저장" },
-                { icon: "✏️", label: "인라인 수정" },
-                { icon: "🗑", label: "간편 삭제" },
-                { icon: "☁️", label: "클라우드 동기화" },
-              ].map(({ icon, label }) => (
-                <div
-                  key={label}
-                  className="bg-[#dedede] bevel-plate px-2 py-1 flex items-center gap-1"
-                >
-                  <span className="text-[11px]">{icon}</span>
-                  <span className="text-[10px] font-black text-[#21242e] uppercase tracking-wide">
-                    {label}
-                  </span>
-                </div>
-              ))}
+            {/* 주요 기능 안내 칩 목록 */}
+            <div className="w-full bg-[#dedede]/80 bevel-plate p-2.5 flex flex-col gap-1.5 text-left">
+              <div className="text-[9px] font-black uppercase text-[#555e75] tracking-wider">
+                ★ LOGIN MEMBER PERKS
+              </div>
+              <ul className="text-[10px] font-bold text-[#21242e] space-y-1">
+                <li className="flex items-center gap-1.5">
+                  <span className="text-[#e48600]">✔</span>
+                  <span><strong>개인화 Firestore 경로</strong> (users/&#123;user.uid&#125;/link)에 링크 저장</span>
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <span className="text-[#e48600]">✔</span>
+                  <span><strong>실시간 인라인 편집</strong> 및 안전한 <strong>삭제 확인 모달</strong> 지원</span>
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <span className="text-[#e48600]">✔</span>
+                  <span><strong>이메일 앞부분</strong>이 내 프로필 닉네임(Display Name)으로 자동 적용</span>
+                </li>
+              </ul>
             </div>
 
-            {/* 에러 메시지 */}
+            {/* 에러 메시지 알림 (발생 시) */}
             {error && (
-              <div className="w-full bg-[#ffeaea] border-2 border-[#e60012] px-3 py-2 bevel-chip text-left">
-                <span className="text-[10px] font-bold text-[#e60012]">
-                  ⚠ {error}
+              <div className="w-full bg-[#ffeaea] border-2 border-[#e60012] px-3 py-2 bevel-chip text-left flex items-start gap-1.5">
+                <span className="text-[#e60012] font-black text-xs">⚠</span>
+                <span className="text-[10px] font-bold text-[#e60012] leading-tight">
+                  {error}
                 </span>
               </div>
             )}
 
-            {/* Google 로그인 버튼 */}
+            {/* 대형 구글 소셜 로그인 버튼 */}
             <button
               type="button"
               onClick={handleGoogleLogin}
               disabled={isLoading}
-              className="w-full flex items-center justify-center gap-2.5 bg-white hover:bg-[#f5f5f5] active:bg-[#ebebeb] border-2 border-[#21242e] px-4 py-2.5 bevel-plate cursor-pointer disabled:opacity-50 disabled:pointer-events-none transition-colors"
+              className="w-full flex items-center justify-center gap-2.5 bg-white hover:bg-[#f2f4f8] active:bg-[#e4e8f0] border-2 border-[#21242e] px-4 py-3 bevel-chip cursor-pointer disabled:opacity-50 disabled:pointer-events-none transition-all shadow-md group"
             >
-              {/* Google G 로고 SVG */}
               {isLoading ? (
                 <span className="w-5 h-5 border-2 border-[#3d4f97] border-t-transparent rounded-full animate-spin" />
               ) : (
@@ -125,28 +146,27 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                   />
                 </svg>
               )}
-              <span className="text-[12px] font-black text-[#21242e] uppercase tracking-wider">
-                {isLoading ? "SIGNING IN..." : "Sign in with Google"}
+              <span className="text-[12px] sm:text-[13px] font-black text-[#21242e] tracking-wider uppercase group-hover:text-[#3d4f97]">
+                {isLoading ? "구글 계정 인증 진행 중..." : "Google 계정으로 로그인"}
               </span>
             </button>
 
-            {/* 하단 안내 */}
-            <p className="text-[9px] font-bold text-[#555e75] leading-relaxed">
-              로그인 시 Google 계정 정보(이름, 이메일, 프로필 사진)가 사용됩니다.
-            </p>
+            <span className="text-[9px] font-bold text-[#555e75]">
+              ※ 로그인 완료 즉시 마이 링크 카트리지 등록이 활성화됩니다.
+            </span>
           </div>
         </Card>
       </div>
 
-      {/* 하단 Tech Spec 영역 */}
+      {/* 하단 시스템 아키텍처 스펙 칩 */}
       <div className="mx-3.5 mb-3.5 bg-[#8ba1d4] bevel-plate p-2 text-center">
         <div className="text-[9px] font-black text-[#21242e] uppercase tracking-wider mb-1 flex items-center justify-center gap-1">
           <span className="text-[#3d4f97]">≡</span>
-          <span>POWERED BY</span>
+          <span>SECURITY & AUTH ARCHITECTURE</span>
           <span className="text-[#3d4f97]">≡</span>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-1">
-          {["Firebase Auth", "Firestore", "Next.js", "Google OAuth"].map(
+          {["Firebase Auth", "Firestore (users/{uid}/link)", "Google OAuth 2.0", "Next.js"].map(
             (item) => (
               <Badge
                 key={item}

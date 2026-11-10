@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
 export default function Home() {
-  const { user, authLoading } = useAuth();
+  const { user, profile, displayName, authLoading } = useAuth();
 
   const [links, setLinks] = useState<LinkCartridge[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -31,9 +31,12 @@ export default function Home() {
   const [deleteTarget, setDeleteTarget] = useState<LinkCartridge | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
-  // Firestore에서 사용자 링크 목록 1회 조회 (users/{uid}/links, createdAt desc)
+  // Firestore에서 사용자 링크 목록 조회 (users/{user.uid}/link, 최신순)
   const fetchLinks = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      setLinks([]);
+      return;
+    }
     setIsLoading(true);
     try {
       const firestoreLinks = await getFirestoreLinks(user.uid);
@@ -50,7 +53,7 @@ export default function Home() {
     setIsMounted(true);
   }, []);
 
-  // 로그인 상태가 바뀔 때마다 링크 새로 불러오기
+  // 로그인 상태가 변경될 때 링크 목록 갱신
   useEffect(() => {
     if (user) {
       fetchLinks();
@@ -66,7 +69,7 @@ export default function Home() {
     }, 2400);
   };
 
-  // 링크 추가 (users/{uid}/links)
+  // 링크 추가 (users/{user.uid}/link)
   const handleAddLink = async (newLink: LinkCartridge) => {
     if (!user) return;
     try {
@@ -80,7 +83,7 @@ export default function Home() {
     }
   };
 
-  // 링크 수정
+  // 링크 수정 (users/{user.uid}/link)
   const handleUpdateLink = async (
     id: string,
     updated: Partial<LinkCartridge>
@@ -135,16 +138,17 @@ export default function Home() {
   };
 
   const handleCopyEmail = () => {
-    navigator.clipboard.writeText(contactEmail);
-    showToast("E-mail address copied to clipboard! ✉");
+    const emailToCopy = user?.email || contactEmail;
+    navigator.clipboard.writeText(emailToCopy);
+    showToast(`E-mail (${emailToCopy}) 복사 완료! ✉`);
   };
 
   const handleShare = async () => {
     if (typeof window !== "undefined" && navigator.share) {
       try {
         await navigator.share({
-          title: "정희원 | Developer Profile",
-          text: "정희원의 Nintendo 2001 콘솔 프로필을 확인해보세요!",
+          title: `${displayName} | My Link Console`,
+          text: `${displayName}님의 Nintendo 2001 콘솔 프로필을 확인해보세요!`,
           url: window.location.href,
         });
         return;
@@ -191,25 +195,14 @@ export default function Home() {
           </Button>
         </div>
 
-        {/* 2. USER STATUS BAR — 로그인 상태에 따라 분기 */}
-        {authLoading ? (
-          // Auth 초기화 중
-          <div className="bg-[#9fbee7] px-3.5 py-1.5 flex items-center gap-2 border-b border-[#3d4f97]">
-            <span className="w-2 h-2 rounded-full bg-[#3d4f97] animate-pulse" />
-            <span className="text-[10px] font-black text-[#3d4f97] uppercase tracking-[0.5px]">
-              AUTHENTICATING...
-            </span>
-          </div>
-        ) : user ? (
-          // 로그인됨 → 유저 정보 헤더
-          <UserHeader user={user} />
-        ) : (
-          // 비로그인 → 안내 스트립
-          <div className="bg-[#9fbee7] px-3.5 py-1 flex items-center justify-between text-[10px] font-black text-[#21242e] border-b border-[#3d4f97] uppercase tracking-[0.5px]">
-            <span>SYSTEM: GUEST MODE</span>
-            <span className="text-[#e60012] font-mono">LOGIN REQUIRED</span>
-          </div>
-        )}
+        {/* 2. SUB-NAV STRIP : 헤더에 구글 소셜 로그인 / 유저 정보 연동 */}
+        <UserHeader
+          user={user}
+          displayName={displayName}
+          firestorePath={user ? `users/${user.uid}/link` : undefined}
+          onLoginSuccess={fetchLinks}
+          onSignOut={() => setLinks([])}
+        />
 
         {/* 3. HERO / PROFILE MODULE */}
         <div className="p-3.5 bg-[#7a8aba]">
@@ -230,7 +223,7 @@ export default function Home() {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={user.photoURL}
-                    alt={user.displayName ?? "profile"}
+                    alt={displayName}
                     className="w-16 h-16 border-2 border-[#21242e] shadow-md object-cover"
                     referrerPolicy="no-referrer"
                   />
@@ -246,7 +239,7 @@ export default function Home() {
                 <div className="relative">
                   <div className="w-16 h-16 bg-[#e60012] border-2 border-[#21242e] shadow-md flex items-center justify-center">
                     <span className="text-3xl font-black text-white select-none">
-                      {user ? (user.displayName?.[0]?.toUpperCase() ?? "U") : "정"}
+                      {user ? (displayName[0]?.toUpperCase() ?? "U") : "정"}
                     </span>
                   </div>
                   <Badge
@@ -260,17 +253,15 @@ export default function Home() {
               )}
             </div>
 
-            {/* 이름 / 유저 정보 */}
-            <div className="flex flex-col items-center mb-2 z-10">
+            {/* 이름 / 유저 정보 (Display Name: 이메일 앞부분) */}
+            <div className="flex flex-col items-center mb-1.5 z-10">
               <div className="flex items-baseline gap-2">
                 <h1 className="text-2xl sm:text-3xl font-black text-[#21242e] tracking-tight">
-                  {user?.displayName ?? "정희원"}
+                  {user ? displayName : "정희원"}
                 </h1>
-                {!user && (
-                  <span className="text-xs sm:text-sm font-black text-[#3d4f97] tracking-wider uppercase">
-                    Jeong Huiwon
-                  </span>
-                )}
+                <span className="text-xs sm:text-sm font-black text-[#3d4f97] tracking-wider uppercase">
+                  {user ? (user.email ? `@${displayName}` : "USER") : "Jeong Huiwon"}
+                </span>
               </div>
               {user?.email && (
                 <span className="text-[10px] font-mono font-bold text-[#3d4f97] mt-0.5">
@@ -283,32 +274,39 @@ export default function Home() {
             <Badge
               variant="default"
               size="default"
-              className="bg-[#21242e] text-[#ecab37] tracking-wider mb-2.5 z-10 rounded-none"
+              className="bg-[#21242e] text-[#ecab37] tracking-wider mb-2 z-10 rounded-none"
             >
-              FRONTEND DEVELOPER &amp; PROBLEM SOLVER
+              {user ? "MY LINK CONSOLE USER" : "FRONTEND DEVELOPER & PROBLEM SOLVER"}
             </Badge>
 
-            {/* Bio */}
-            <p className="text-[12px] font-bold text-[#21242e] leading-relaxed max-w-sm break-keep z-10">
-              문제를 집요하게 파고들어 직관적이고 견고한 웹 경험을 설계합니다.
-              사용자 가치를 만드는 지속 가능한 코드에 몰입합니다.
+            {/* Bio / 안내 문구 */}
+            <p className="text-[11px] sm:text-[12px] font-bold text-[#21242e] leading-relaxed max-w-sm break-keep z-10">
+              {user
+                ? "개인화된 Firestore 저장소에 링크 카트리지를 등록하고 실시간으로 관리합니다."
+                : "문제를 집요하게 파고들어 직관적이고 견고한 웹 경험을 설계합니다. 로그인 시 개인 링크 보관함을 사용할 수 있습니다."}
             </p>
+
+            {/* Firestore 경로 및 유저 정보 박스 (로그인 시 화면에 명확히 표시) */}
+            {user && (
+              <div className="mt-2.5 w-full bg-[#dedede]/90 bevel-plate p-2 text-left z-10 flex flex-col gap-1">
+                <div className="flex items-center justify-between text-[9px] font-black uppercase text-[#21242e]">
+                  <span>★ FIRESTORE DATABASE PATH</span>
+                  <span className="text-[#3d4f97] font-mono font-bold bg-white/70 px-1 py-0.2 rounded-xs">
+                    users/{user.uid}/link
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-[9px] font-bold text-[#555e75]">
+                  <span>DISPLAY NAME: <strong className="text-[#21242e]">{displayName}</strong></span>
+                  <span className="font-mono text-[8px] text-[#3d4f97]">UID: {user.uid.slice(0, 8)}...</span>
+                </div>
+              </div>
+            )}
           </Card>
         </div>
 
-        {/* 4. CARTRIDGE LIST 또는 LOGIN SCREEN */}
-        {authLoading ? (
-          // Auth 로딩 중 스켈레톤
-          <div className="px-3.5 pb-3.5">
-            <div className="bg-[#8ba1d4] bevel-plate p-6 flex flex-col items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-[#ecab37] animate-bounce" />
-              <span className="text-[10px] font-black text-[#21242e] uppercase tracking-wider animate-pulse">
-                LOADING SYSTEM...
-              </span>
-            </div>
-          </div>
-        ) : user ? (
-          // 로그인됨 → 카트리지 목록
+        {/* 4. CARTRIDGE LIST (로그인 시) 또는 LOGIN SCREEN (비로그인 시) */}
+        {user ? (
+          // 로그인 시: 마이 링크(슬롯, 추가 다이얼로그, 인라인 수정, 삭제 모달) 전체 사용 가능
           <>
             {/* 액션 툴바 */}
             <div className="px-3.5 pb-2 flex items-center justify-between">
@@ -331,7 +329,7 @@ export default function Home() {
                   onClick={() => fetchLinks()}
                   disabled={isLoading}
                   className="text-[9px] px-1.5 py-0.5 cursor-pointer"
-                  title="링크 새로고침"
+                  title="Firestore 링크 새로고침"
                 >
                   REFRESH ↻
                 </Button>
@@ -357,7 +355,7 @@ export default function Home() {
             <div className="px-3.5 pb-3.5">
               <LinkList
                 links={links}
-                email={contactEmail}
+                email={user.email || contactEmail}
                 onCopyEmail={handleCopyEmail}
                 onUpdateLink={handleUpdateLink}
                 onDeleteLink={handleDeleteRequest}
@@ -365,8 +363,8 @@ export default function Home() {
             </div>
           </>
         ) : (
-          // 비로그인 → 로그인 안내 화면
-          <LoginScreen />
+          // 비로그인 시: 로그인 이후에 사용할 수 있도록 설명 문구 및 로그인 화면 제공
+          <LoginScreen onLoginSuccess={fetchLinks} />
         )}
 
         {/* 5. TECH SPEC CHIPS */}
@@ -393,7 +391,7 @@ export default function Home() {
         {/* 6. FOOTER */}
         <footer className="carbon-halftone px-3.5 py-2.5 flex items-center justify-between gap-2 border-t-2 border-[#3d4f97] text-[9px] text-[#9fbee7]">
           <div className="font-bold text-white">
-            © 1997–2001 Nintendo / Jeong Huiwon
+            © 1997–2001 Nintendo / {displayName || "Jeong Huiwon"}
           </div>
           <Badge
             variant="amber"
@@ -405,7 +403,7 @@ export default function Home() {
         </footer>
       </Card>
 
-      {/* Toast */}
+      {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#f68d1f] text-white font-black text-xs px-3.5 py-1.5 border-2 border-[#21242e] bevel-signal shadow-lg tracking-wide uppercase whitespace-nowrap">
           {toastMessage}
