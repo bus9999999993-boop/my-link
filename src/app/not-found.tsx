@@ -1,9 +1,44 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { UserProfileClient } from "./[displayName]/user-profile-client";
 
 export default function NotFound() {
+  const [targetDisplayName, setTargetDisplayName] = useState<string | null>(null);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      // GitHub Pages 배포 시 URL 경로 분석 (예: /my-link/username/ -> username 추출)
+      const pathname = window.location.pathname;
+      const segments = pathname.split("/").filter(Boolean);
+
+      // my-link 저장소명 세그먼트 제외
+      const userSegments = segments.filter(
+        (seg) => seg !== "my-link" && seg !== "index.html"
+      );
+
+      if (userSegments.length === 1) {
+        // 단일 세그먼트인 경우 /[displayName] 동적 라우트로 간주하고 프로필 컴포넌트 마운트
+        setTargetDisplayName(decodeURIComponent(userSegments[0]));
+      }
+      setChecking(false);
+    }
+  }, []);
+
+  // GitHub Pages SPA 라우팅: 동적 [displayName] 경로인 경우 프로필 뷰 즉시 마운트
+  if (targetDisplayName) {
+    return <UserProfileClient initialDisplayName={targetDisplayName} />;
+  }
+
+  if (checking) {
+    return null;
+  }
+
   return (
     <main className="min-h-screen w-full flex items-center justify-center p-3 sm:p-6 text-[#21242e]">
       <Card className="w-full max-w-[480px] bg-[#7a8aba] shadow-[0_16px_36px_rgba(20,25,45,0.4)] relative flex flex-col rounded-none">
@@ -42,25 +77,16 @@ export default function NotFound() {
               size="default"
               className="bg-[#e60012] text-white font-black tracking-wider mb-2 rounded-none uppercase"
             >
-              USER NOT FOUND
+              PAGE NOT FOUND
             </Badge>
 
             <h1 className="text-xl sm:text-2xl font-black text-[#21242e] tracking-tight mb-2">
-              유저를 찾을 수 없습니다
+              페이지를 찾을 수 없습니다
             </h1>
 
             <p className="text-[11px] sm:text-[12px] font-bold text-[#555e75] leading-relaxed max-w-sm mb-4 break-keep">
-              요청하신 Display Name의 사용자 정보가 존재하지 않거나, 아직 프로필이 생성되지 않은 계정입니다.
+              요청하신 페이지가 존재하지 않거나, 잘못된 URL 경로입니다.
             </p>
-
-            <div className="w-full bg-[#c8d4ec] p-2.5 text-left text-[10px] font-mono text-[#3d4f97] mb-4 border border-[#3d4f97]/40">
-              <div className="font-bold text-[#21242e] uppercase text-[9px] mb-1">
-                SYSTEM DIAGNOSTIC:
-              </div>
-              <div>• STATUS: 404 NOT_FOUND</div>
-              <div>• REASON: DISPLAY_NAME_NOT_REGISTERED</div>
-              <div>• PATH: /users?displayName=[TARGET]</div>
-            </div>
 
             <Link href="/" className="w-full">
               <Button
