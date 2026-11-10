@@ -1,10 +1,11 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { type User } from "firebase/auth";
 import { signInWithGoogle, signOutUser } from "@/lib/auth-service";
 import { Button } from "@/components/ui/button";
-import { LogOut, LogIn } from "lucide-react";
+import { LogOut, LogIn, User as UserIcon, Home as HomeIcon, ChevronDown, ExternalLink } from "lucide-react";
 
 interface UserHeaderProps {
   user: User | null;
@@ -22,6 +23,27 @@ export function UserHeader({
   onSignOut,
 }: UserHeaderProps) {
   const [isProcessing, setIsProcessing] = React.useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+  // 드롭다운 외부 클릭 감지하여 닫기
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    if (isDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isDropdownOpen]);
 
   const handleGoogleLogin = async () => {
     setIsProcessing(true);
@@ -54,6 +76,7 @@ export function UserHeader({
 
   const handleSignOut = async () => {
     setIsProcessing(true);
+    setIsDropdownOpen(false);
     try {
       await signOutUser();
       onSignOut?.();
@@ -64,58 +87,133 @@ export function UserHeader({
     }
   };
 
-  // 1. 로그인 상태인 경우: 이메일 앞부분 displayName, 이메일, Firestore 경로, 로그아웃 버튼
+  // 1. 로그인 상태인 경우
   if (user) {
     const finalDisplayName =
       displayName || user.email?.split("@")[0] || user.displayName || "USER";
+    const userProfileHref = `/${encodeURIComponent(finalDisplayName)}`;
 
     return (
-      <div className="bg-[#9fbee7] px-3.5 py-1.5 flex items-center justify-between border-b border-[#3d4f97] gap-2">
-        {/* 유저 정보 영역 */}
-        <div className="flex items-center gap-2 min-w-0">
-          {/* 프로필 사진 또는 첫 글자 아바타 */}
-          {user.photoURL ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={user.photoURL}
-              alt={finalDisplayName}
-              className="w-6 h-6 rounded-full border border-[#3d4f97] shrink-0 object-cover"
-              referrerPolicy="no-referrer"
-            />
-          ) : (
-            <div className="w-6 h-6 rounded-full bg-[#21242e] border border-[#3d4f97] shrink-0 flex items-center justify-center">
-              <span className="text-[10px] font-black text-[#ecab37]">
-                {finalDisplayName[0]?.toUpperCase() ?? "U"}
-              </span>
+      <div className="bg-[#9fbee7] px-3.5 py-1.5 flex items-center justify-between border-b border-[#3d4f97] gap-2 relative z-30">
+        {/* 유저 정보 및 프로필 드롭다운 토글 영역 */}
+        <div ref={dropdownRef} className="relative">
+          <button
+            type="button"
+            onClick={() => setIsDropdownOpen((prev) => !prev)}
+            aria-expanded={isDropdownOpen}
+            className="flex items-center gap-2 min-w-0 p-1 -m-1 rounded-sm hover:bg-[#8ba1d4]/50 transition-colors cursor-pointer text-left focus:outline-none focus:ring-1 focus:ring-[#3d4f97]"
+            title="프로필 메뉴 열기"
+          >
+            {/* 프로필 사진 또는 첫 글자 아바타 */}
+            {user.photoURL ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={user.photoURL}
+                alt={finalDisplayName}
+                className="w-6 h-6 rounded-full border border-[#3d4f97] shrink-0 object-cover"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="w-6 h-6 rounded-full bg-[#21242e] border border-[#3d4f97] shrink-0 flex items-center justify-center">
+                <span className="text-[10px] font-black text-[#ecab37]">
+                  {finalDisplayName[0]?.toUpperCase() ?? "U"}
+                </span>
+              </div>
+            )}
+
+            {/* 이름 & 배지 */}
+            <div className="min-w-0 text-left">
+              <div className="flex items-center gap-1.5 truncate leading-none">
+                <span className="text-[11px] font-black text-[#21242e] truncate max-w-[110px] sm:max-w-[140px]">
+                  {finalDisplayName}
+                </span>
+                <span className="text-[8px] font-bold bg-[#21242e] text-[#ecab37] px-1 py-0.2 rounded-xs shrink-0">
+                  AUTH
+                </span>
+                <ChevronDown
+                  className={`w-3 h-3 text-[#21242e] transition-transform duration-150 ${
+                    isDropdownOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </div>
+              <div className="text-[9px] font-bold text-[#3d4f97] truncate font-mono leading-none mt-1 max-w-[120px] sm:max-w-[160px]">
+                {user.email}
+              </div>
+            </div>
+          </button>
+
+          {/* 프로필 드롭다운 메뉴 (Nintendo 2001 콘솔 스타일) */}
+          {isDropdownOpen && (
+            <div className="absolute left-0 top-full mt-2 w-48 bg-[#dedede] border-2 border-[#21242e] bevel-plate shadow-[0_8px_20px_rgba(20,25,45,0.4)] py-1.5 z-50 flex flex-col gap-1 text-[11px] font-black text-[#21242e]">
+              <div className="px-2.5 py-1 border-b border-[#3d4f97]/30 flex flex-col">
+                <span className="text-[9px] text-[#555e75] font-bold uppercase tracking-wider">
+                  USER PROFILE MENU
+                </span>
+                <span className="text-[11px] font-mono text-[#3d4f97] truncate">
+                  @{finalDisplayName}
+                </span>
+              </div>
+
+              {/* 1. 개인별 페이지 이동 */}
+              <Link
+                href={userProfileHref}
+                onClick={() => setIsDropdownOpen(false)}
+                className="px-2.5 py-1.5 hover:bg-[#9bb0db] flex items-center gap-2 transition-colors cursor-pointer text-[#21242e]"
+              >
+                <UserIcon className="w-3.5 h-3.5 text-[#3d4f97]" />
+                <span className="truncate">내 페이지로 이동</span>
+              </Link>
+
+              {/* 2. 메인 콘솔 이동 */}
+              <Link
+                href="/"
+                onClick={() => setIsDropdownOpen(false)}
+                className="px-2.5 py-1.5 hover:bg-[#9bb0db] flex items-center gap-2 transition-colors cursor-pointer text-[#21242e]"
+              >
+                <HomeIcon className="w-3.5 h-3.5 text-[#3d4f97]" />
+                <span>메인 홈 콘솔</span>
+              </Link>
+
+              <div className="border-t border-[#3d4f97]/30 my-0.5" />
+
+              {/* 3. 로그아웃 */}
+              <button
+                type="button"
+                onClick={handleSignOut}
+                disabled={isProcessing}
+                className="w-full text-left px-2.5 py-1.5 hover:bg-[#ffeaea] text-[#a7282b] hover:text-[#e60012] flex items-center gap-2 transition-colors cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>{isProcessing ? "로그아웃 중..." : "로그아웃"}</span>
+              </button>
             </div>
           )}
-
-          {/* 이름(이메일 앞부분) & 이메일 */}
-          <div className="min-w-0 text-left">
-            <div className="flex items-center gap-1.5 truncate leading-none">
-              <span className="text-[11px] font-black text-[#21242e] truncate">
-                {finalDisplayName}
-              </span>
-              <span className="text-[9px] font-bold bg-[#21242e] text-[#ecab37] px-1 py-0.2 rounded-xs shrink-0">
-                AUTH
-              </span>
-            </div>
-            <div className="text-[9px] font-bold text-[#3d4f97] truncate font-mono leading-none mt-1">
-              {user.email}
-            </div>
-          </div>
         </div>
 
-        {/* 오른쪽: 경로 힌트 + 로그아웃 버튼 */}
+        {/* 오른쪽 영역: [내 페이지 바로가기 버튼] + [Firestore 경로] + [로그아웃 버튼] */}
         <div className="flex items-center gap-1.5 shrink-0">
+          {/* 헤더 [내 페이지 바로가기] 버튼 */}
+          <Link href={userProfileHref}>
+            <Button
+              variant="amber"
+              size="xs"
+              className="text-[9px] px-2 py-0.5 cursor-pointer flex items-center gap-1 font-black shadow-xs tracking-wider"
+              title="내 개인별 페이지로 이동"
+            >
+              <ExternalLink className="w-2.5 h-2.5" />
+              <span>내 페이지</span>
+            </Button>
+          </Link>
+
           {firestorePath && (
             <span
-              className="text-[8px] font-mono font-bold text-[#3d4f97] bg-white/50 px-1 py-0.5 rounded-xs hidden md:inline-block truncate max-w-[150px]"
+              className="text-[8px] font-mono font-bold text-[#3d4f97] bg-white/50 px-1 py-0.5 rounded-xs hidden lg:inline-block truncate max-w-[130px]"
               title={firestorePath}
             >
               {firestorePath}
             </span>
           )}
+
           <Button
             variant="subtle"
             size="xs"
@@ -125,7 +223,7 @@ export function UserHeader({
             title="로그아웃"
           >
             <LogOut className="w-2.5 h-2.5" />
-            <span>{isProcessing ? "..." : "LOGOUT"}</span>
+            <span className="hidden sm:inline">{isProcessing ? "..." : "LOGOUT"}</span>
           </Button>
         </div>
       </div>

@@ -1,21 +1,10 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import { Providers } from "@/components/providers";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
-  title: "정희원 | Developer Profile",
-  description: "정희원의 개발자 프로필 페이지",
+  title: "My Link Console",
+  description: "개인화된 프로필 링크 콘솔",
 };
 
 export default function RootLayout({
@@ -24,10 +13,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="ko"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
+    <html lang="ko" className="h-full antialiased font-sans">
       <body className="min-h-full flex flex-col">
         <Providers>{children}</Providers>
       </body>

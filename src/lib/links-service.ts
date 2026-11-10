@@ -39,8 +39,8 @@ export interface UserProfileDoc {
   bio?: string; // 한 줄 소개
   photoURL?: string | null;
   firestorePath: string; // "users/{uid}/link"
-  lastLoginAt?: any;
-  updatedAt?: any;
+  lastLoginAt?: unknown;
+  updatedAt?: unknown;
 }
 
 /**
@@ -154,6 +154,47 @@ export async function getUserProfile(uid: string): Promise<UserProfileDoc | null
 }
 
 /**
+ * displayName으로 유저 프로필 정보를 조회합니다.
+ * @param displayName 검색할 사용자 displayName (URL 디코딩된 문자열)
+ */
+export async function getUserByDisplayName(
+  displayName: string
+): Promise<UserProfileDoc | null> {
+  const trimmed = displayName.trim();
+  if (!trimmed) return null;
+
+  try {
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, where("displayName", "==", trimmed));
+    const snapshot = await getDocs(q);
+
+    if (!snapshot.empty) {
+      const docSnap = snapshot.docs[0];
+      return docSnap.data() as UserProfileDoc;
+    }
+
+    // 대소문자 구분을 없앤 보조 검색 (fallback)
+    const allUsersSnap = await getDocs(usersRef);
+    const found = allUsersSnap.docs.find((d) => {
+      const data = d.data() as UserProfileDoc;
+      return (
+        data.displayName?.toLowerCase() === trimmed.toLowerCase() ||
+        getEmailDisplayName(data.email, "").toLowerCase() === trimmed.toLowerCase()
+      );
+    });
+
+    if (found) {
+      return found.data() as UserProfileDoc;
+    }
+
+    return null;
+  } catch (error) {
+    console.error("getUserByDisplayName error:", error);
+    return null;
+  }
+}
+
+/**
  * uid 기반 link 컬렉션 레퍼런스 반환
  * 경로: users/{uid}/link
  */
@@ -204,6 +245,58 @@ export async function getFirestoreLinks(uid: string): Promise<LinkCartridge[]> {
       updatedAt: data.updatedAt ?? null,
     };
   });
+}
+
+/**
+ * 특정 유저 ID(uid)의 모든 링크 카트리지를 조회합니다.
+ * 요구사항 "user/{userId}/links" 및 기존 "users/{userId}/link", "users/{userId}/links"를
+ * 순차적으로 탐색하여 존재하는 링크 목록을 반환합니다.
+ */
+export async function getUserLinks(uid: string): Promise<LinkCartridge[]> {
+  if (!uid) return [];
+
+  // 1. 기존 컬렉션 경로: users/{uid}/link
+  try {
+    const primaryLinks = await getFirestoreLinks(uid);
+    if (primaryLinks && primaryLinks.length > 0) {
+      return primaryLinks;
+    }
+  } catch (e) {
+    console.warn("Error fetching from users/{uid}/link:", e);
+  }
+
+  // 2. 혹시 'user/{uid}/links' 또는 'users/{uid}/links' 에 저장된 경우 fallback 조회
+  const candidateCollections = [
+    collection(db, "users", uid, "links"),
+    collection(db, "user", uid, "links"),
+  ];
+
+  for (const colRef of candidateCollections) {
+    try {
+      const q = query(colRef, orderBy("createdAt", "desc"));
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) {
+        return snapshot.docs.map((docSnap) => {
+          const data = docSnap.data();
+          return {
+            id: docSnap.id,
+            label: data.label ?? "",
+            code: data.code ?? "",
+            desc: data.desc ?? "",
+            url: data.url ?? "",
+            tag: data.tag ?? "",
+            tagColor: data.tagColor ?? "",
+            createdAt: data.createdAt,
+            updatedAt: data.updatedAt ?? null,
+          };
+        });
+      }
+    } catch {
+      // 다음 후보 경로 탐색
+    }
+  }
+
+  return [];
 }
 
 /**
