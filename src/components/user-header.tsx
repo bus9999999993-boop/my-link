@@ -30,6 +30,23 @@ export function UserHeader({
       onLoginSuccess?.();
     } catch (err: unknown) {
       console.error("Header login error:", err);
+      const code = (err as { code?: string; message?: string })?.code;
+      if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+        setIsProcessing(false);
+        return;
+      }
+
+      let errorMsg = "로그인 중 오류가 발생했습니다.";
+      if (code === "auth/unauthorized-domain") {
+        errorMsg = `현재 접속 주소(${window.location.hostname})가 Firebase 승인 도메인에 없습니다.\nPC에서는 http://localhost:3000 으로 접속해주세요!`;
+      } else if (code === "auth/operation-not-allowed") {
+        errorMsg = "Firebase 콘솔에서 Google 로그인이 활성화되지 않았습니다.";
+      } else if (code === "auth/popup-blocked") {
+        errorMsg = "브라우저 팝업이 차단되었습니다. 팝업 차단을 해제해주세요.";
+      } else if (code) {
+        errorMsg = `로그인 오류 (${code})\n잠시 후 다시 시도해주세요.`;
+      }
+      alert(errorMsg);
     } finally {
       setIsProcessing(false);
     }

@@ -12,6 +12,17 @@ interface LoginScreenProps {
 export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [isNotLocalhost, setIsNotLocalhost] = React.useState(false);
+
+  React.useEffect(() => {
+    if (
+      typeof window !== "undefined" &&
+      window.location.hostname !== "localhost" &&
+      window.location.hostname !== "127.0.0.1"
+    ) {
+      setIsNotLocalhost(true);
+    }
+  }, []);
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
@@ -21,25 +32,35 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
       onLoginSuccess?.();
     } catch (err: unknown) {
       console.error("Google login error:", err);
-      const code = (err as { code?: string })?.code;
+      const code = (err as { code?: string; message?: string })?.code;
+      const currentHost = typeof window !== "undefined" ? window.location.hostname : "";
+
       if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
         setIsLoading(false);
         return;
       }
-      const messages: Record<string, string> = {
-        "auth/operation-not-allowed":
-          "Google 로그인이 Firebase Console에서 활성화되지 않았습니다. Authentication > Sign-in method에서 Google을 활성화해주세요.",
-        "auth/unauthorized-domain":
-          "현재 도메인이 Firebase 인증 허용 도메인에 등록되어 있지 않습니다. (localhost 등록 필요)",
-        "auth/popup-blocked":
-          "브라우저 팝업이 차단되었습니다. 팝업 차단을 해제하고 다시 시도해주세요.",
-        "auth/network-request-failed":
-          "네트워크 통신 오류가 발생했습니다. 인터넷 연결 상태를 확인해주세요.",
-      };
-      setError(
-        messages[code ?? ""] ??
-          `로그인 실패 (${code || "알 수 없는 오류"}): 브라우저 콘솔을 확인해주세요.`
-      );
+
+      if (code === "auth/unauthorized-domain") {
+        setError(
+          `현재 접속 주소(${currentHost})는 Firebase 인증에 허용되지 않은 도메인입니다. PC 브라우저에서 http://localhost:3000 으로 접속하시거나, Firebase Console > Authentication > Settings > 승인된 도메인에 [${currentHost}]를 추가해주세요.`
+        );
+      } else if (code === "auth/operation-not-allowed") {
+        setError(
+          "Firebase Console에서 Google 로그인이 활성화되지 않았습니다. Authentication > Sign-in method 탭에서 Google 제공업체를 [사용 설정]해주세요."
+        );
+      } else if (code === "auth/popup-blocked") {
+        setError(
+          "브라우저에서 로그인 팝업 창이 차단되었습니다. 주소창 우측의 팝업 차단을 해제하고 다시 클릭해주세요."
+        );
+      } else if (code === "auth/network-request-failed") {
+        setError(
+          "네트워크 통신 오류가 발생했습니다. 인터넷 연결 상태를 확인하고 잠시 후 다시 시도해주세요."
+        );
+      } else {
+        setError(
+          `로그인 실패 [${code || "UNKNOWN"}]: ${(err as Error)?.message || "브라우저 콘솔(F12)을 확인해주세요."}`
+        );
+      }
     } finally {
       setIsLoading(false);
     }
@@ -65,6 +86,19 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
           {/* 본문 설명 및 안내 문구 */}
           <div className="p-4 sm:p-5 flex flex-col items-center gap-4 text-center">
+            {/* IP 주소 접속 시 안내 팁 배너 */}
+            {isNotLocalhost && (
+              <div className="w-full bg-[#ecab37] text-[#21242e] border-2 border-[#21242e] p-2.5 bevel-chip text-left flex flex-col gap-1">
+                <span className="font-black text-[11px] flex items-center gap-1">
+                  <span>💡</span>
+                  <span>접속 주소 안내 (중요)</span>
+                </span>
+                <span className="text-[10px] font-bold leading-relaxed">
+                  현재 로컬 IP 주소로 접속 중입니다. Firebase Google 로그인은 보안 정책상 기본적으로 <strong>http://localhost:3000</strong> 에서 동작합니다. 로그인이 안 되실 경우 PC의 <strong>http://localhost:3000</strong> 으로 접속하시거나 Firebase 콘솔의 승인된 도메인에 현재 IP를 추가해주세요.
+                </span>
+              </div>
+            )}
+
             {/* 자물쇠 / 카트리지 하드웨어 아이콘 */}
             <div className="w-14 h-14 bg-[#dedede] bevel-plate flex items-center justify-center shadow-inner">
               <span className="text-3xl select-none">🔒</span>
