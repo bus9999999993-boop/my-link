@@ -1,15 +1,16 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { contactEmail, techSpecs, type LinkCartridge } from "@/data/links";
-import {
-  addLinkToFirestore,
-  getFirestoreLinks,
-  updateLinkInFirestore,
-  deleteLinkFromFirestore,
-  clearFirestoreLinks,
-} from "@/lib/links-service";
 import { useAuth } from "@/hooks/use-auth";
+import {
+  useLinksQuery,
+  useAddLinkMutation,
+  useUpdateLinkMutation,
+  useDeleteLinkMutation,
+  useClearLinksMutation,
+} from "@/hooks/use-links-query";
+import { useProfileQuery } from "@/hooks/use-profile-query";
 import { LinkList } from "@/components/link-list";
 import { AddLinkDialog } from "@/components/add-link-dialog";
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog";
@@ -21,54 +22,38 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
 export default function Home() {
-  const { user, profile, displayName, bio, authLoading, updateProfileState } =
+  const { user, profile, displayName: authDisplayName, bio: authBio, authLoading, updateProfileState } =
     useAuth();
 
-  const [links, setLinks] = useState<LinkCartridge[]>([]);
+  // 1. TanStack Query: 프로필 조회 (낙관적 업데이트 연동)
+  const { data: profileQueryData } = useProfileQuery(user?.uid);
+  const currentDisplayName = profileQueryData?.displayName || authDisplayName;
+  const currentBio = profileQueryData?.bio || authBio;
+
+  // 2. TanStack Query: 링크 목록 조회 (실시간 리스너 대신 캐싱/갱신형)
+  const {
+    data: links = [],
+    isLoading: isLinksLoading,
+    isFetching: isLinksFetching,
+    refetch: refetchLinks,
+  } = useLinksQuery(user?.uid);
+
+  // 3. TanStack Query: 링크 추가/수정/삭제/초기화 뮤테이션
+  const addLinkMutation = useAddLinkMutation(user?.uid || "");
+  const updateLinkMutation = useUpdateLinkMutation(user?.uid || "");
+  const deleteLinkMutation = useDeleteLinkMutation(user?.uid || "");
+  const clearLinksMutation = useClearLinksMutation(user?.uid || "");
+
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
 
   // 삭제 확인 모달 상태
   const [deleteTarget, setDeleteTarget] = useState<LinkCartridge | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
-  // 프로필 수정 완료 핸들러
-  const handleProfileUpdateSuccess = (newDisplayName: string, newBio: string) => {
-    updateProfileState({ displayName: newDisplayName, bio: newBio });
-    showToast(`프로필 [${newDisplayName}] 수정 완료! ✏️`);
-  };
-
-  // Firestore에서 사용자 링크 목록 조회 (users/{user.uid}/link, 최신순)
-  const fetchLinks = useCallback(async () => {
-    if (!user) {
-      setLinks([]);
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const firestoreLinks = await getFirestoreLinks(user.uid);
-      setLinks(firestoreLinks);
-    } catch (error) {
-      console.error("Firestore links fetch failed:", error);
-      showToast("링크 목록을 불러오는 데 실패했습니다. ❌");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user]);
-
   useEffect(() => {
     setIsMounted(true);
   }, []);
-
-  // 로그인 상태가 변경될 때 링크 목록 갱신
-  useEffect(() => {
-    if (user) {
-      fetchLinks();
-    } else {
-      setLinks([]);
-    }
-  }, [user, fetchLinks]);
 
   const showToast = (message: string) => {
     setToastMessage(message);
@@ -77,32 +62,36 @@ export default function Home() {
     }, 2400);
   };
 
-  // 링크 추가 (users/{user.uid}/link)
+  // 프로필 수정 성공 시 (낙관적 업데이트가 useProfileQuery에 이미 즉시 반영됨)
+  const handleProfileUpdateSuccess = (newDisplayName: string, newBio: string) => {
+    updateProfileState({ displayName: newDisplayName, bio: newBio });
+    showToast(`프로필 [${newDisplayName}] 낙관적 업데이트 완료! ⚡`);
+  };
+
+  // 링크 추가 (TanStack Query mutation)
   const handleAddLink = async (newLink: LinkCartridge) => {
     if (!user) return;
     try {
-      await addLinkToFirestore(user.uid, newLink);
+      await addLinkMutation.mutateAsync(newLink);
       showToast(`카트리지 [${newLink.label}] 저장 완료! 💾`);
-      await fetchLinks();
     } catch (error) {
-      console.error("Firestore link save error:", error);
+      console.error("Link add error:", error);
       showToast("카트리지 저장에 실패했습니다. 다시 시도해주세요. ❌");
       throw error;
     }
   };
 
-  // 링크 수정 (users/{user.uid}/link)
+  // 링크 수정 (TanStack Query mutation)
   const handleUpdateLink = async (
     id: string,
     updated: Partial<LinkCartridge>
   ) => {
     if (!user) return;
     try {
-      await updateLinkInFirestore(user.uid, id, updated);
+      await updateLinkMutation.mutateAsync({ id, updated });
       showToast(`카트리지 수정 완료! ✏️`);
-      await fetchLinks();
     } catch (error) {
-      console.error("Firestore link update error:", error);
+      console.error("Link update error:", error);
       showToast("카트리지 수정에 실패했습니다. 다시 시도해주세요. ❌");
       throw error;
     }
@@ -114,15 +103,14 @@ export default function Home() {
     setIsDeleteModalOpen(true);
   };
 
-  // 삭제 확인 → Firestore 삭제
+  // 삭제 확인 → TanStack Query mutation
   const handleDeleteConfirm = async () => {
     if (!user || !deleteTarget?.id) return;
     try {
-      await deleteLinkFromFirestore(user.uid, deleteTarget.id);
+      await deleteLinkMutation.mutateAsync(deleteTarget.id);
       showToast(`카트리지 [${deleteTarget.label}] 삭제 완료! 🗑`);
-      await fetchLinks();
     } catch (error) {
-      console.error("Firestore link delete error:", error);
+      console.error("Link delete error:", error);
       showToast("삭제 중 오류가 발생했습니다. 다시 시도해주세요. ❌");
       throw error;
     } finally {
@@ -130,16 +118,15 @@ export default function Home() {
     }
   };
 
-  // 전체 초기화
+  // 전체 초기화 (TanStack Query mutation)
   const handleClearAllLinks = async () => {
     if (!user) return;
     if (confirm("등록된 모든 링크 카트리지를 삭제할까요? (Firestore에서 삭제됩니다)")) {
       try {
-        await clearFirestoreLinks(user.uid);
-        await fetchLinks();
+        await clearLinksMutation.mutateAsync();
         showToast("모든 카트리지가 삭제되었습니다. 🗑");
       } catch (error) {
-        console.error("Firestore links clear error:", error);
+        console.error("Links clear error:", error);
         showToast("삭제 중 오류가 발생했습니다. ❌");
       }
     }
@@ -155,8 +142,8 @@ export default function Home() {
     if (typeof window !== "undefined" && navigator.share) {
       try {
         await navigator.share({
-          title: `${displayName} | My Link Console`,
-          text: `${displayName}님의 Nintendo 2001 콘솔 프로필을 확인해보세요!`,
+          title: `${currentDisplayName} | My Link Console`,
+          text: `${currentDisplayName}님의 Nintendo 2001 콘솔 프로필을 확인해보세요!`,
           url: window.location.href,
         });
         return;
@@ -169,6 +156,8 @@ export default function Home() {
       showToast("Profile link copied! 🔗");
     }
   };
+
+  const isAnyLoading = isLinksLoading || isLinksFetching || addLinkMutation.isPending || updateLinkMutation.isPending || deleteLinkMutation.isPending || clearLinksMutation.isPending;
 
   return (
     <main className="min-h-screen w-full flex items-center justify-center p-3 sm:p-6 text-[#21242e]">
@@ -206,10 +195,10 @@ export default function Home() {
         {/* 2. SUB-NAV STRIP : 헤더에 구글 소셜 로그인 / 유저 정보 연동 */}
         <UserHeader
           user={user}
-          displayName={displayName}
+          displayName={currentDisplayName}
           firestorePath={user ? `users/${user.uid}/link` : undefined}
-          onLoginSuccess={fetchLinks}
-          onSignOut={() => setLinks([])}
+          onLoginSuccess={() => refetchLinks()}
+          onSignOut={() => {}}
         />
 
         {/* 로그인 여부에 따른 화면 분기: 로그인을 안할 땐 프로필이 안 뜬 상태 */}
@@ -232,8 +221,8 @@ export default function Home() {
                 <div className="absolute top-2.5 right-2.5 z-20">
                   <EditProfileDialog
                     currentUid={user.uid}
-                    initialDisplayName={displayName}
-                    initialBio={bio}
+                    initialDisplayName={currentDisplayName}
+                    initialBio={currentBio}
                     onUpdateSuccess={handleProfileUpdateSuccess}
                   />
                 </div>
@@ -245,7 +234,7 @@ export default function Home() {
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={user.photoURL}
-                        alt={displayName}
+                        alt={currentDisplayName}
                         className="w-16 h-16 border-2 border-[#21242e] shadow-md object-cover"
                         referrerPolicy="no-referrer"
                       />
@@ -261,7 +250,7 @@ export default function Home() {
                     <div className="relative">
                       <div className="w-16 h-16 bg-[#e60012] border-2 border-[#21242e] shadow-md flex items-center justify-center">
                         <span className="text-3xl font-black text-white select-none">
-                          {displayName[0]?.toUpperCase() ?? "U"}
+                          {currentDisplayName[0]?.toUpperCase() ?? "U"}
                         </span>
                       </div>
                       <Badge
@@ -275,14 +264,14 @@ export default function Home() {
                   )}
                 </div>
 
-                {/* 이름 / 유저 정보 (Display Name: 로그인한 사람의 이메일 앞부분 또는 커스텀 변경값) */}
+                {/* 이름 / 유저 정보 (Display Name: 낙관적 업데이트 실시간 연동) */}
                 <div className="flex flex-col items-center mb-1.5 z-10">
                   <div className="flex items-baseline gap-2">
                     <h1 className="text-2xl sm:text-3xl font-black text-[#21242e] tracking-tight">
-                      {displayName}
+                      {currentDisplayName}
                     </h1>
                     <span className="text-xs sm:text-sm font-black text-[#3d4f97] tracking-wider uppercase">
-                      @{displayName}
+                      @{currentDisplayName}
                     </span>
                   </div>
                   {user.email && (
@@ -301,9 +290,9 @@ export default function Home() {
                   MY LINK CONSOLE USER
                 </Badge>
 
-                {/* 안내 문구 / 한 줄 소개 (Bio) */}
+                {/* 안내 문구 / 한 줄 소개 (Bio: 낙관적 업데이트 실시간 연동) */}
                 <p className="text-[11px] sm:text-[12px] font-bold text-[#21242e] leading-relaxed max-w-sm break-keep z-10">
-                  {bio}
+                  {currentBio}
                 </p>
 
                 {/* Firestore 경로 및 유저 정보 박스 */}
@@ -315,7 +304,7 @@ export default function Home() {
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-[9px] font-bold text-[#555e75]">
-                    <span>DISPLAY NAME: <strong className="text-[#21242e]">{displayName}</strong></span>
+                    <span>DISPLAY NAME: <strong className="text-[#21242e]">{currentDisplayName}</strong></span>
                     <span className="font-mono text-[8px] text-[#3d4f97]">UID: {user.uid.slice(0, 8)}...</span>
                   </div>
                 </div>
@@ -329,9 +318,9 @@ export default function Home() {
                 <span className="text-[10px] font-black uppercase text-[#21242e] tracking-wider">
                   CARTRIDGE SLOTS ({isMounted ? links.length : 0})
                 </span>
-                {isLoading && (
+                {isAnyLoading && (
                   <span className="text-[9px] font-bold text-[#e48600] animate-pulse">
-                    SYNCING...
+                    SYNCING (QUERY)...
                   </span>
                 )}
               </div>
@@ -340,10 +329,10 @@ export default function Home() {
                 <Button
                   variant="subtle"
                   size="xs"
-                  onClick={() => fetchLinks()}
-                  disabled={isLoading}
+                  onClick={() => refetchLinks()}
+                  disabled={isAnyLoading}
                   className="text-[9px] px-1.5 py-0.5 cursor-pointer"
-                  title="Firestore 링크 새로고침"
+                  title="TanStack Query 링크 새로고침"
                 >
                   REFRESH ↻
                 </Button>
@@ -352,6 +341,7 @@ export default function Home() {
                     variant="subtle"
                     size="xs"
                     onClick={handleClearAllLinks}
+                    disabled={clearLinksMutation.isPending}
                     className="text-[9px] px-1.5 py-0.5 cursor-pointer text-[#a7282b] hover:text-[#e60012]"
                     title="모든 링크 삭제"
                   >
@@ -379,7 +369,7 @@ export default function Home() {
         ) : (
           // ================= [2] 비로그인 상태 : 프로필 안 뜬 상태, 로그인 화면만 제공 =================
           <div className="pt-3.5">
-            <LoginScreen onLoginSuccess={fetchLinks} />
+            <LoginScreen onLoginSuccess={() => refetchLinks()} />
           </div>
         )}
 
@@ -391,23 +381,25 @@ export default function Home() {
             <span className="text-[#3d4f97]">≡</span>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-1">
-            {techSpecs.map((item, idx) => (
-              <Badge
-                key={idx}
-                variant="spec"
-                size="default"
-                className="rounded-none font-black text-[10px] px-2 py-0.5"
-              >
-                #{item}
-              </Badge>
-            ))}
+            {["TanStack Query v5", "Next.js 16", "Firestore (users/{uid}/link)", "Optimistic UI", "React 19"].map(
+              (item, idx) => (
+                <Badge
+                  key={idx}
+                  variant="spec"
+                  size="default"
+                  className="rounded-none font-black text-[10px] px-2 py-0.5"
+                >
+                  #{item}
+                </Badge>
+              )
+            )}
           </div>
         </div>
 
         {/* 6. FOOTER */}
         <footer className="carbon-halftone px-3.5 py-2.5 flex items-center justify-between gap-2 border-t-2 border-[#3d4f97] text-[9px] text-[#9fbee7]">
           <div className="font-bold text-white">
-            © 1997–2001 Nintendo / {displayName || "Jeong Huiwon"}
+            © 1997–2001 Nintendo / {currentDisplayName || "Jeong Huiwon"}
           </div>
           <Badge
             variant="amber"

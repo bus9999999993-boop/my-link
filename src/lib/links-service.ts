@@ -8,11 +8,9 @@ import {
   query,
   orderBy,
   where,
-  onSnapshot,
   getDocs,
   getDoc,
   setDoc,
-  type Unsubscribe,
 } from "firebase/firestore";
 import { type User, updateProfile } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
@@ -206,43 +204,6 @@ export async function getFirestoreLinks(uid: string): Promise<LinkCartridge[]> {
       updatedAt: data.updatedAt ?? null,
     };
   });
-}
-
-/**
- * users/{uid}/link 컬렉션의 링크 목록을 실시간 구독 (구독 해제 함수 반환)
- */
-export function subscribeToFirestoreLinks(
-  uid: string,
-  onSuccess: (links: LinkCartridge[]) => void,
-  onError?: (error: unknown) => void
-): Unsubscribe {
-  const colRef = getLinksCollectionRef(uid);
-  const q = query(colRef, orderBy("createdAt", "desc"));
-
-  return onSnapshot(
-    q,
-    (snapshot) => {
-      const items: LinkCartridge[] = snapshot.docs.map((docSnap) => {
-        const data = docSnap.data();
-        return {
-          id: docSnap.id,
-          label: data.label ?? "",
-          code: data.code ?? "",
-          desc: data.desc ?? "",
-          url: data.url ?? "",
-          tag: data.tag ?? "",
-          tagColor: data.tagColor ?? "",
-          createdAt: data.createdAt,
-          updatedAt: data.updatedAt ?? null,
-        };
-      });
-      onSuccess(items);
-    },
-    (error) => {
-      console.error("[Firestore] subscribeToFirestoreLinks error:", error);
-      onError?.(error);
-    }
-  );
 }
 
 /**

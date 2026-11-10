@@ -15,7 +15,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { isDisplayNameTaken, updateUserProfile } from "@/lib/links-service";
+import { isDisplayNameTaken } from "@/lib/links-service";
+import { useUpdateProfileMutation } from "@/hooks/use-profile-query";
 
 interface EditProfileDialogProps {
   currentUid: string;
@@ -39,8 +40,11 @@ export function EditProfileDialog({
   const [bioInput, setBioInput] = React.useState(initialBio);
   const [checkStatus, setCheckStatus] = React.useState<CheckStatus>("idle");
   const [checkMessage, setCheckMessage] = React.useState<string>("");
-  const [isSaving, setIsSaving] = React.useState(false);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
+
+  // TanStack Query 낙관적 업데이트 뮤테이션 훅
+  const updateProfileMutation = useUpdateProfileMutation(currentUid);
+  const isSaving = updateProfileMutation.isPending;
 
   // 다이얼로그가 열릴 때 초기값 복원
   React.useEffect(() => {
@@ -140,20 +144,18 @@ export function EditProfileDialog({
       return;
     }
 
-    setIsSaving(true);
     setErrorMsg(null);
     try {
-      await updateUserProfile(currentUid, {
+      // 낙관적 업데이트 실행 (onMutate로 UI 즉시 반영됨)
+      await updateProfileMutation.mutateAsync({
         displayName: trimmedName,
         bio: trimmedBio,
       });
       onUpdateSuccess(trimmedName, trimmedBio);
       setOpen(false);
     } catch (err: unknown) {
-      console.error("updateUserProfile error:", err);
+      console.error("updateProfile error:", err);
       setErrorMsg("프로필 저장 중 오류가 발생했습니다. 다시 시도해주세요.");
-    } finally {
-      setIsSaving(false);
     }
   };
 
