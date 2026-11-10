@@ -204,111 +204,107 @@ export default function Home() {
           onSignOut={() => setLinks([])}
         />
 
-        {/* 3. HERO / PROFILE MODULE */}
-        <div className="p-3.5 bg-[#7a8aba]">
-          <Card className="bg-gradient-to-r from-[#acace7] via-[#9bb0db] to-[#8ba1d4] p-4 text-center flex flex-col items-center relative overflow-hidden rounded-none">
-            {/* Circuit Overlay */}
-            <div
-              className="absolute inset-0 opacity-10 pointer-events-none"
-              style={{
-                backgroundImage: `linear-gradient(#3d4f97 1px, transparent 1px), linear-gradient(90deg, #3d4f97 1px, transparent 1px)`,
-                backgroundSize: "16px 16px",
-              }}
-            />
+        {/* 로그인 여부에 따른 화면 분기: 로그인을 안할 땐 프로필이 안 뜬 상태 */}
+        {user ? (
+          // ================= [1] 로그인 완료 상태 : 프로필 + 마이 링크 슬롯 =================
+          <>
+            {/* 3. HERO / PROFILE MODULE (로그인 시에만 표시!) */}
+            <div className="p-3.5 bg-[#7a8aba]">
+              <Card className="bg-gradient-to-r from-[#acace7] via-[#9bb0db] to-[#8ba1d4] p-4 text-center flex flex-col items-center relative overflow-hidden rounded-none">
+                {/* Circuit Overlay */}
+                <div
+                  className="absolute inset-0 opacity-10 pointer-events-none"
+                  style={{
+                    backgroundImage: `linear-gradient(#3d4f97 1px, transparent 1px), linear-gradient(90deg, #3d4f97 1px, transparent 1px)`,
+                    backgroundSize: "16px 16px",
+                  }}
+                />
 
-            {/* Profile Avatar */}
-            <div className="relative mb-2.5 z-10">
-              {user?.photoURL ? (
-                <div className="relative">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={user.photoURL}
-                    alt={displayName}
-                    className="w-16 h-16 border-2 border-[#21242e] shadow-md object-cover"
-                    referrerPolicy="no-referrer"
-                  />
-                  <Badge
-                    variant="signal"
-                    size="micro"
-                    className="absolute -bottom-1 -right-2 text-white"
-                  >
-                    AUTH
-                  </Badge>
+                {/* Profile Avatar */}
+                <div className="relative mb-2.5 z-10">
+                  {user.photoURL ? (
+                    <div className="relative">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={user.photoURL}
+                        alt={displayName}
+                        className="w-16 h-16 border-2 border-[#21242e] shadow-md object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                      <Badge
+                        variant="signal"
+                        size="micro"
+                        className="absolute -bottom-1 -right-2 text-white"
+                      >
+                        AUTH
+                      </Badge>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <div className="w-16 h-16 bg-[#e60012] border-2 border-[#21242e] shadow-md flex items-center justify-center">
+                        <span className="text-3xl font-black text-white select-none">
+                          {displayName[0]?.toUpperCase() ?? "U"}
+                        </span>
+                      </div>
+                      <Badge
+                        variant="signal"
+                        size="micro"
+                        className="absolute -bottom-1 -right-2 text-white"
+                      >
+                        AUTH
+                      </Badge>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="relative">
-                  <div className="w-16 h-16 bg-[#e60012] border-2 border-[#21242e] shadow-md flex items-center justify-center">
-                    <span className="text-3xl font-black text-white select-none">
-                      {user ? (displayName[0]?.toUpperCase() ?? "U") : "정"}
+
+                {/* 이름 / 유저 정보 (Display Name: 로그인한 사람의 이메일 앞부분) */}
+                <div className="flex flex-col items-center mb-1.5 z-10">
+                  <div className="flex items-baseline gap-2">
+                    <h1 className="text-2xl sm:text-3xl font-black text-[#21242e] tracking-tight">
+                      {displayName}
+                    </h1>
+                    <span className="text-xs sm:text-sm font-black text-[#3d4f97] tracking-wider uppercase">
+                      @{displayName}
                     </span>
                   </div>
-                  <Badge
-                    variant="signal"
-                    size="micro"
-                    className="absolute -bottom-1 -right-2 text-white"
-                  >
-                    {user ? "AUTH" : "32-BIT"}
-                  </Badge>
+                  {user.email && (
+                    <span className="text-[10px] font-mono font-bold text-[#3d4f97] mt-0.5">
+                      {user.email}
+                    </span>
+                  )}
                 </div>
-              )}
+
+                {/* Role Badge */}
+                <Badge
+                  variant="default"
+                  size="default"
+                  className="bg-[#21242e] text-[#ecab37] tracking-wider mb-2 z-10 rounded-none"
+                >
+                  MY LINK CONSOLE USER
+                </Badge>
+
+                {/* 안내 문구 */}
+                <p className="text-[11px] sm:text-[12px] font-bold text-[#21242e] leading-relaxed max-w-sm break-keep z-10">
+                  개인화된 Firestore 저장소에 링크 카트리지를 등록하고 실시간으로 관리합니다.
+                </p>
+
+                {/* Firestore 경로 및 유저 정보 박스 */}
+                <div className="mt-2.5 w-full bg-[#dedede]/90 bevel-plate p-2 text-left z-10 flex flex-col gap-1">
+                  <div className="flex items-center justify-between text-[9px] font-black uppercase text-[#21242e]">
+                    <span>★ FIRESTORE DATABASE PATH</span>
+                    <span className="text-[#3d4f97] font-mono font-bold bg-white/70 px-1 py-0.2 rounded-xs">
+                      users/{user.uid}/link
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[9px] font-bold text-[#555e75]">
+                    <span>DISPLAY NAME: <strong className="text-[#21242e]">{displayName}</strong></span>
+                    <span className="font-mono text-[8px] text-[#3d4f97]">UID: {user.uid.slice(0, 8)}...</span>
+                  </div>
+                </div>
+              </Card>
             </div>
 
-            {/* 이름 / 유저 정보 (Display Name: 이메일 앞부분) */}
-            <div className="flex flex-col items-center mb-1.5 z-10">
-              <div className="flex items-baseline gap-2">
-                <h1 className="text-2xl sm:text-3xl font-black text-[#21242e] tracking-tight">
-                  {user ? displayName : "정희원"}
-                </h1>
-                <span className="text-xs sm:text-sm font-black text-[#3d4f97] tracking-wider uppercase">
-                  {user ? (user.email ? `@${displayName}` : "USER") : "Jeong Huiwon"}
-                </span>
-              </div>
-              {user?.email && (
-                <span className="text-[10px] font-mono font-bold text-[#3d4f97] mt-0.5">
-                  {user.email}
-                </span>
-              )}
-            </div>
-
-            {/* Role Badge */}
-            <Badge
-              variant="default"
-              size="default"
-              className="bg-[#21242e] text-[#ecab37] tracking-wider mb-2 z-10 rounded-none"
-            >
-              {user ? "MY LINK CONSOLE USER" : "FRONTEND DEVELOPER & PROBLEM SOLVER"}
-            </Badge>
-
-            {/* Bio / 안내 문구 */}
-            <p className="text-[11px] sm:text-[12px] font-bold text-[#21242e] leading-relaxed max-w-sm break-keep z-10">
-              {user
-                ? "개인화된 Firestore 저장소에 링크 카트리지를 등록하고 실시간으로 관리합니다."
-                : "문제를 집요하게 파고들어 직관적이고 견고한 웹 경험을 설계합니다. 로그인 시 개인 링크 보관함을 사용할 수 있습니다."}
-            </p>
-
-            {/* Firestore 경로 및 유저 정보 박스 (로그인 시 화면에 명확히 표시) */}
-            {user && (
-              <div className="mt-2.5 w-full bg-[#dedede]/90 bevel-plate p-2 text-left z-10 flex flex-col gap-1">
-                <div className="flex items-center justify-between text-[9px] font-black uppercase text-[#21242e]">
-                  <span>★ FIRESTORE DATABASE PATH</span>
-                  <span className="text-[#3d4f97] font-mono font-bold bg-white/70 px-1 py-0.2 rounded-xs">
-                    users/{user.uid}/link
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-[9px] font-bold text-[#555e75]">
-                  <span>DISPLAY NAME: <strong className="text-[#21242e]">{displayName}</strong></span>
-                  <span className="font-mono text-[8px] text-[#3d4f97]">UID: {user.uid.slice(0, 8)}...</span>
-                </div>
-              </div>
-            )}
-          </Card>
-        </div>
-
-        {/* 4. CARTRIDGE LIST (로그인 시) 또는 LOGIN SCREEN (비로그인 시) */}
-        {user ? (
-          // 로그인 시: 마이 링크(슬롯, 추가 다이얼로그, 인라인 수정, 삭제 모달) 전체 사용 가능
-          <>
-            {/* 액션 툴바 */}
+            {/* 4. CARTRIDGE LIST (로그인 완료 시 액션 툴바 + 링크 목록) */}
             <div className="px-3.5 pb-2 flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 bg-[#21242e] inline-block" />
@@ -363,8 +359,10 @@ export default function Home() {
             </div>
           </>
         ) : (
-          // 비로그인 시: 로그인 이후에 사용할 수 있도록 설명 문구 및 로그인 화면 제공
-          <LoginScreen onLoginSuccess={fetchLinks} />
+          // ================= [2] 비로그인 상태 : 프로필 안 뜬 상태, 로그인 화면만 제공 =================
+          <div className="pt-3.5">
+            <LoginScreen onLoginSuccess={fetchLinks} />
+          </div>
         )}
 
         {/* 5. TECH SPEC CHIPS */}
